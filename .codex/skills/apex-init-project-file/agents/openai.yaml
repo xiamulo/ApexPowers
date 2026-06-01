@@ -1,4 +1,4 @@
 interface:
   display_name: "Apex Init Project File"
-  short_description: "Find and write missing folder Agents.md files"
-  default_prompt: "Use apex-init-project-file to find folders missing Agents.md, then write concise context-aware files without overwriting existing ones."
+  short_description: "按真实上下文补齐目录 Agents.md"
+  default_prompt: "使用 apex-init-project-file 扫描项目中缺少 Agents.md 的文件夹，并由模型根据真实目录上下文写出 3 行以内的极简说明，不覆盖已有文件。"
