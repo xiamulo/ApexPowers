@@ -1,4 +1,4 @@
 interface:
   display_name: "Apex Init Project Code"
-  short_description: "Find and write missing code headers"
-  default_prompt: "Use apex-init-project-code to find code files missing standard headers, then write accurate context-aware comments without overwriting existing headers."
+  short_description: "按真实代码补齐或重写头部注释"
+  default_prompt: "使用 apex-init-project-code 扫描代码文件，由模型根据真实代码写入标准头部注释；默认只补缺，用户明确要求重新生成时更新已有头部。"

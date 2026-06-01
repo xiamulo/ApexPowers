@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""List project folders that are missing Agents.md."""
+"""List project folders that should receive Agents.md attention."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ SKIP_DIRS = {
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="List folders missing Agents.md.")
+    parser = argparse.ArgumentParser(description="List folders needing Agents.md work.")
     parser.add_argument(
         "root",
         nargs="?",
@@ -49,6 +49,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Output machine-readable JSON.",
     )
+    parser.add_argument(
+        "--all",
+        "--force",
+        "--regenerate",
+        action="store_true",
+        dest="include_existing",
+        help="List all eligible folders, including folders that already have Agents.md.",
+    )
     return parser.parse_args()
 
 
@@ -56,16 +64,16 @@ def has_agents_file(directory: Path) -> bool:
     return any(child.is_file() and child.name.lower() == "agents.md" for child in directory.iterdir())
 
 
-def iter_missing_dirs(root: Path) -> list[Path]:
-    missing: list[Path] = []
+def iter_target_dirs(root: Path, include_existing: bool) -> list[Path]:
+    targets: list[Path] = []
     for current, dir_names, _ in os.walk(root):
         dir_names[:] = [name for name in dir_names if name not in SKIP_DIRS and not name.startswith(".")]
         current_path = Path(current)
         if current_path == root:
             continue
-        if not has_agents_file(current_path):
-            missing.append(current_path)
-    return sorted(missing, key=lambda item: item.relative_to(root).as_posix().lower())
+        if include_existing or not has_agents_file(current_path):
+            targets.append(current_path)
+    return sorted(targets, key=lambda item: item.relative_to(root).as_posix().lower())
 
 
 def main() -> int:
@@ -74,18 +82,23 @@ def main() -> int:
     if not root.is_dir():
         raise SystemExit(f"Project root is not a directory: {root}")
 
-    missing = iter_missing_dirs(root)
+    targets = iter_target_dirs(root, args.include_existing)
+    mode = "regenerate" if args.include_existing else "missing"
     if args.json:
         payload = {
             "root": str(root),
-            "missing": [path.relative_to(root).as_posix() for path in missing],
-            "count": len(missing),
+            "mode": mode,
+            "targets": [path.relative_to(root).as_posix() for path in targets],
+            "count": len(targets),
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
-        for path in missing:
+        for path in targets:
             print(path.relative_to(root).as_posix())
-        print(f"Summary: {len(missing)} folders missing Agents.md.")
+        if args.include_existing:
+            print(f"Summary: {len(targets)} folders selected for Agents.md regeneration.")
+        else:
+            print(f"Summary: {len(targets)} folders missing Agents.md.")
     return 0
 
 

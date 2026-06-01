@@ -1,4 +1,4 @@
 interface:
   display_name: "Apex Init Project Agent"
   short_description: "固定生成 AGENTS.md，按源码生成 rules"
-  default_prompt: "使用 apex-init-project-agent 初始化项目根 AGENTS.md，并根据项目源码与配置生成 .claude/rules 下的规则文档；AGENTS.md 使用固定模板，rules 由模型按真实上下文写。"
+  default_prompt: "使用 apex-init-project-agent 初始化项目根 AGENTS.md，并根据项目源码与配置生成 .claude/rules；默认只补缺，用户明确要求重新生成时重写 AGENTS.md 和全部 rules。"

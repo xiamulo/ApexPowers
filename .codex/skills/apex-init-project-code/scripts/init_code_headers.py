@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""List code files that are missing a standard header comment."""
+"""List code files that should receive header comment attention."""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ HEADER_MARKERS = ("@purpose", "文件作用")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="List code files missing standard headers.")
+    parser = argparse.ArgumentParser(description="List code files needing header comment work.")
     parser.add_argument("root", nargs="?", default=".", help="Project root. Defaults to current directory.")
     parser.add_argument(
         "paths",
@@ -67,6 +67,14 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--include-md", action="store_true", help="Also report .md and .mdx files.")
     parser.add_argument("--json", action="store_true", help="Output machine-readable JSON.")
+    parser.add_argument(
+        "--all",
+        "--force",
+        "--regenerate",
+        action="store_true",
+        dest="include_existing",
+        help="List all supported files, including files that already have header comments.",
+    )
     return parser.parse_args()
 
 
@@ -139,31 +147,38 @@ def main() -> int:
     if not root.is_dir():
         raise SystemExit(f"Project root is not a directory: {root}")
 
-    missing: list[Path] = []
+    targets: list[Path] = []
     skipped_unreadable = 0
     for path in iter_files(root, args.paths, args.include_md):
         text = read_text(path)
         if text is None:
             skipped_unreadable += 1
             continue
-        if is_missing_header(path, text):
-            missing.append(path)
+        if args.include_existing or is_missing_header(path, text):
+            targets.append(path)
 
     if args.json:
         payload = {
             "root": str(root),
-            "missing": [path.relative_to(root).as_posix() for path in missing],
-            "count": len(missing),
+            "mode": "regenerate" if args.include_existing else "missing",
+            "targets": [path.relative_to(root).as_posix() for path in targets],
+            "count": len(targets),
             "skipped_unreadable": skipped_unreadable,
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
-        for path in missing:
+        for path in targets:
             print(path.relative_to(root).as_posix())
-        print(
-            f"Summary: {len(missing)} files missing standard headers; "
-            f"{skipped_unreadable} unreadable files skipped."
-        )
+        if args.include_existing:
+            print(
+                f"Summary: {len(targets)} files selected for header regeneration; "
+                f"{skipped_unreadable} unreadable files skipped."
+            )
+        else:
+            print(
+                f"Summary: {len(targets)} files missing standard headers; "
+                f"{skipped_unreadable} unreadable files skipped."
+            )
     return 0
 
 
