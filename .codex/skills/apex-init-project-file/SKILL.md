@@ -1,14 +1,20 @@
 ---
 name: apex-init-project-file
-description: Initialize existing project folders with minimal missing Agents.md files. Use when the user asks to scan a project directory and create lightweight folder-level agent context files without overwriting existing Agents.md files.
+description: Initialize missing folder-level Agents.md files in an existing project using agent-written, context-aware content. Use when the user asks to scan project folders and create concise Agents.md files without overwriting existing ones.
 ---
 
 # Apex Init Project File
 
 ## Workflow
 
-Run `scripts/init_agents_md.py <project-root>` from this skill directory. If no root is specified by the user, use the current repository root.
+Use `scripts/init_agents_md.py <project-root>` only to find folders that are missing `Agents.md`. The script is discovery-only and must not create or write documentation content.
 
-The script scans project subdirectories, skips common generated/vendor folders, and creates `Agents.md` only where one does not already exist. It never overwrites an existing `Agents.md` or case-equivalent file.
+For each missing folder, read the folder contents and enough nearby files to understand its real purpose. Then create `Agents.md` yourself using the actual project context; do not rely on filename guesses alone.
 
-Each created file must stay within three lines: folder name plus one-sentence purpose, a one-line bullet-style summary of main files, and `Agents: 本文件夹文件/结构变化时，请同步更新本文件内容。`
+Each created `Agents.md` must stay within three lines:
+
+1. Folder name plus one concise sentence describing the folder's actual purpose.
+2. One-line bullet-style list of the main files and their roles.
+3. `Agents: 本文件夹文件/结构变化时，请同步更新本文件内容。`
+
+Only create files for folders reported by the discovery script. Never overwrite existing `Agents.md` or case-equivalent files.
