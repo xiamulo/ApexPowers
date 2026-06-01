@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apex Init Project Code"
+  short_description: "Add missing purpose headers to code files"
+  default_prompt: "Use apex-init-project-code to scan this existing project and initialize missing code file header comments."

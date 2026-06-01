@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apex Init Project File"
+  short_description: "Create minimal Agents.md files for project folders"
+  default_prompt: "Use apex-init-project-file to initialize missing Agents.md files in this existing project."

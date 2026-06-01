@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apex Init Project Agent"
+  short_description: "Create project AGENTS.md and rules docs"
+  default_prompt: "Use apex-init-project-agent to initialize the project-level AGENTS.md and .claude/rules documents for this existing project."
