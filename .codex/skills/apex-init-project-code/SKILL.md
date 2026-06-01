@@ -1,23 +1,23 @@
 ---
 name: apex-init-project-code
-description: Initialize missing standard header comments in existing project code using agent-written, code-aware content. Use when the user asks to scan code files and add @purpose/@deps/@exports/@location/@rules headers without overwriting existing headers.
+description: 初始化已有项目中缺失的源码文件头部注释。适用于用户要求扫描代码文件，并在不覆盖已有头部注释的前提下，由 agent 根据真实代码写入 @purpose/@deps/@exports/@location/@rules 标准头。
 ---
 
 # Apex Init Project Code
 
-## Workflow
+## 工作流
 
-Use `scripts/init_code_headers.py <project-root> [paths...]` only to find supported code files whose first 40 lines do not contain `@purpose` or `文件作用` and that do not already start with a header comment. The script is discovery-only and must not insert or rewrite headers.
+只使用 `scripts/init_code_headers.py <project-root> [paths...]` 查找缺少标准头部注释的代码文件。这个脚本只负责发现候选文件：前 40 行内没有 `@purpose` 或 `文件作用`，并且文件开头没有已有头部注释。脚本绝不负责插入或重写头部注释。
 
-For each reported file, read the actual code and generate the header yourself. Descriptions must be based on real imports, exports, declarations, side effects, and the file's role in its folder. Do not rely on script guesses.
+对每个发现脚本列出的文件，先阅读真实代码，再由你生成头部注释。描述必须基于实际 import、依赖、导出、声明、副作用，以及文件在当前文件夹中的角色。不要依赖脚本猜测。
 
-Use the language-appropriate comment syntax:
+根据文件扩展名使用对应注释语法：
 
-- `.ts/.tsx/.js/.jsx/.go/.rs/.java/.cs/.cpp/.c/.h/.hpp/.kt`: `//`
-- `.py`: `#`
-- `.md/.mdx`: `<!-- -->` only when explicitly requested with `--include-md`
+- `.ts/.tsx/.js/.jsx/.go/.rs/.java/.cs/.cpp/.c/.h/.hpp/.kt`：使用 `//`
+- `.py`：使用 `#`
+- `.md/.mdx`：只有用户明确要求 `--include-md` 时，才使用 `<!-- -->`
 
-Header template, within eight lines:
+标准头部模板必须控制在 8 行以内：
 
 ```text
 @purpose: [一句话准确描述本文件核心作用]
@@ -29,4 +29,4 @@ Header template, within eight lines:
 Claude: 本文件内容、接口、依赖、导出或架构发生任何变更时，请**立即**同步更新本头部注释，并同时更新所属文件夹的 claude.md 文件。
 ```
 
-Only modify files reported by the discovery script. Never overwrite or reformat an existing header comment, even if its format differs from this standard.
+只修改发现脚本列出的文件。绝不要覆盖或重排已有头部注释，即使已有格式和本标准不同。

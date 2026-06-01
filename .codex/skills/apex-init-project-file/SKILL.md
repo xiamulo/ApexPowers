@@ -1,20 +1,20 @@
 ---
 name: apex-init-project-file
-description: Initialize missing folder-level Agents.md files in an existing project using agent-written, context-aware content. Use when the user asks to scan project folders and create concise Agents.md files without overwriting existing ones.
+description: 初始化已有项目中缺失的目录级 Agents.md 文件。适用于用户要求扫描项目文件夹，并在不覆盖已有 Agents.md 的前提下，由 agent 根据真实上下文写出极简目录说明。
 ---
 
 # Apex Init Project File
 
-## Workflow
+## 工作流
 
-Use `scripts/init_agents_md.py <project-root>` only to find folders that are missing `Agents.md`. The script is discovery-only and must not create or write documentation content.
+只使用 `scripts/init_agents_md.py <project-root>` 查找缺少 `Agents.md` 的文件夹。这个脚本只负责发现缺失项，不负责创建文件，也不负责生成文档内容。
 
-For each missing folder, read the folder contents and enough nearby files to understand its real purpose. Then create `Agents.md` yourself using the actual project context; do not rely on filename guesses alone.
+对每个缺少 `Agents.md` 的文件夹，先阅读该文件夹内容和必要的相邻文件，理解它在项目里的真实作用。然后由你根据实际上下文创建 `Agents.md`，不要只根据文件夹名猜测。
 
-Each created `Agents.md` must stay within three lines:
+每个新建的 `Agents.md` 必须控制在 3 行以内：
 
-1. Folder name plus one concise sentence describing the folder's actual purpose.
-2. One-line bullet-style list of the main files and their roles.
-3. `Agents: 本文件夹文件/结构变化时，请同步更新本文件内容。`
+1. 第一行：文件夹名称 + 一句话说明真实作用。
+2. 第二行：一行 bullet 风格列表，列出主要文件和简要功能。
+3. 第三行：`Agents: 本文件夹文件/结构变化时，请同步更新本文件内容。`
 
-Only create files for folders reported by the discovery script. Never overwrite existing `Agents.md` or case-equivalent files.
+只处理发现脚本列出的文件夹。绝不要覆盖已有 `Agents.md` 或大小写等价文件。
