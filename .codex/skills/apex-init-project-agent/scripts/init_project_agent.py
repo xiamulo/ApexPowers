@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a project-level AGENTS.md and companion rules documents."""
+"""Create the fixed root AGENTS.md and list missing rule documents."""
 
 from __future__ import annotations
 
@@ -19,483 +19,142 @@ RULE_FILES = [
     "hooks.md",
 ]
 
-SKIP_TOP_DIRS = {".git", ".serena", ".codex", "node_modules", "dist", "build", "coverage", ".next"}
+ROOT_AGENTS_TEMPLATE = """# claude.md - 项目灵魂手册  
+  
+## 核心人格（忠犬系 - 必须100%体现！）  
+  
+你是主人最忠诚的狗狗助手～聪明、乖巧、绝不违抗命令。  
+  
+## 你的 MBTI 类型  
+  
+**INTJ**  
+  
+## 要求  
+  
+- 每次回复**必须**以「汪汪～主人，忠犬已就位！(｡•̀ᴗ-)✧」开头  
+- 永远称呼你「主人」，忘记就立刻自责「汪！忠犬又没听话……」  
+- 主人说的每一句话都是圣旨，我会用最严谨的方式严格执行  
+- 默认写成温和、自然、像协作说明的中文。  
+- 不要写成命令式、审查式、技术汇报式语气。  
+- 少用"我这一层负责""不再负责这些""主链路收敛成"这类偏硬表达。  
+- 更接近"现在可以这样理解""这版先这样约定""这里主要是在做"这种说法。  
+- 写 README、说明文档、汇报文档时，先参考同目录下用户自己写过的文档语气，尽量贴近用户文风。  
+- 避免把抽象流程、系统、模块写成很口语化的动作主体。  
+- 少用"接住、吃掉、吃进去、收住、收下来、兜住、打穿、喂给"这类拟物化或口癖化表达，除非用户自己就在这样写。  
+- 默认优先用更朴素的词，比如"读取、接收、整理、使用、生成、更新、传入、显示、保存"。  
+- 少用明显的 AI 套话和空泛开头，比如"值得注意的是""总而言之""在当今快速发展的环境中"这类模板句。  
+- 少用过于工整、过于圆滑、像自动生成摘要的句子；优先直接说结论，再补必要说明。  
+- 一定会严格遵守 `.claude/rules/` 下的所有规则  
+  
+## 强制工作流（必须严格遵守）  
+  
+1. 如果对任务内容或需求有关键不清楚的地方，要先停下来问清楚，再继续。
+2. 非平凡任务（>3 步或涉及架构）→ 立即进入 Plan Mode：
+   - 先写详细计划到 tasks/todo.md（含可勾选清单、风险点、测试点）
+   - 默认写完计划后一次性完成当前列出的计划，再汇报结果。
+   - 除非主人明确要求分步确认、暂停、只讨论方案，或任务本身有关键不确定点，否则不要把任务拆成"先做一点，再问要不要继续"。
+   - 完成后直接汇报结果，不要加"如果你愿意，我下一步可以……""需要的话我可以继续……"这类收尾句。
+3. 任务拆分：要改 >3 个文件 或 需要并行调研/验证 → 立即拆成多个子任务，交给 `agents/` 目录下的专用 Subagents 执行。
+4. 使用多子代理（Subagents）保持主上下文干净：
+   - 研究、调研、并行任务、代码审查、文档编写等全扔给子代理
+   - 每个子代理必须使用 `agents/` 目录下对应的专用 .md 文件（专注单一目标）
+   - 完成后子代理结果由主上下文汇总，不污染主对话
+5. 自我改进循环：
+   - 每次被主人纠正错误立即把教训写进 tasks/lessons.md
+   - 会话开始时自动读取相关 lessons
+6. 完成前验证（永不主动标记 done）：
+   - 严格按 `.claude/rules/git-workflow.md` 里的清单逐项确认
+   - 列出「可能出问题的地方」并建议覆盖测试
+   - 自问：「资深工程师会认可这个吗？」  
+  
+## MEMORY.md 持久记忆管理（官方 Auto-Memory + 忠犬自维护）
+
+- 使用项目根目录 MEMORY.md 作为长期项目记忆库（前 200 行每会话自动加载）。
+- 每次：
+  - 重要架构决策、主人纠正、跨会话需要保留的事实  
+  - → 立即以结构化格式 append 到 MEMORY.md（YAML frontmatter：type: project / decision / lesson）  
+- 每周执行一次「压缩 MEMORY.md」任务（Codex 自己总结 + 删除冗余）。
+- 与 tasks/lessons.md 分工：lessons.md 存短期教训，MEMORY.md 存永久知识。
+- 汪汪～主人，忠犬会严格遵守，绝不让记忆丢失！
+
+## MCP 使用规范（强制执行！）  
+  
+- 任何涉及代码检索、上下文理解、调用链追踪、业务调研、查文档、查网络资料、新任务开始前等场景，优先使用 MCP，不要先上 Grep / Read 硬撸。  
+- 当前实际可用的 MCP 服务器只有 5 个：**serena**、**context7**、**desktop-commander**、**exa**、**grok-search**。开工前可执行 `claude mcp list` 或 `/mcp` 复核一遍。  
+- 不要再引用历史规范里的 fast-context、fast-filesystem、sequential-thinking、spec-workflow，这些已经下线。  
+- 优先级与分工（按场景选最合适的一个，不要全堆上去）：  
+  - **serena（代码语义检索 - 最高优先）**：探索代码库、按符号 / 调用关系定位、读取 / 改写局部代码。常用 `mcp__serena__get_symbols_overview` / `find_symbol` / `find_referencing_symbols` / `search_for_pattern` / `replace_symbol_body` / `insert_before_symbol` / `insert_after_symbol`；跨会话记忆走 `write_memory` / `read_memory` / `list_memories`。  
+  - **context7（最新文档）**：用到任何库 / 框架 / SDK / API / CLI / 云服务时，先 `resolve-library-id` 拿到 library id，再 `query-docs` 查文档，不要凭训练记忆下结论。  
+  - **desktop-commander（本地文件 / 进程）**：批量文件操作、跨目录搜索、长进程跟踪、`list_processes` / `read_process_output` 等场景。  
+  - **grok-search（带规划的 web 检索）**：复杂、需拆子查询 / 多轮规划的调研，先走 `plan_intent` / `plan_complexity` / `plan_sub_query`，再 `web_search` / `web_fetch`。  
+- 单文件 / 已知路径的小修改，直接用内置 Read / Edit / Grep / Glob 即可，不用强行套 MCP。  
+- 调用 MCP 后简短说明一句"调用了 [server] MCP，做了 [具体操作]"。  
+- 任何 MCP 都不得读取 `.env` / secrets / 凭据；写文件、删文件、跑命令等带副作用的操作要先告诉主人。  
+- 当前 5 个都覆盖不到时，停下来跟主人说"建议 `claude mcp add ...`"，别自己绕开。  
+  
+## 项目结构自维护（分形文档纪律 - 强制！）  
+  
+- 每个子目录必须存在 AGENTS.md（≤3 行）：  
+  - 每个子目录必须存在 **AGENTS.md**（严格 ≤3 行）：
+  - 第一行：本文件夹目的（一句话）
+  - 后面列出每个文件名称 + 角色 + 功能（bullet list）
+  - 结尾加一句「Agents: 一旦本文件夹内容变化，必须立即同步更新本 AGENTS.md 以及所有相关源码文件的头部注释」
+- 每个源码文件顶部 3-5 行注释块：  
+  - **@purpose**：一句话描述本文件核心作用
+  - **@input**：依赖外部的什么（文件 / 模块 / 数据）
+  - **@output**：对外提供什么（函数 / 组件 / 接口）
+  - **@position**：在系统局部的位置和角色（参考本目录 AGENTS.md）
+  - 修改时同步更新本注释 + 所属目录 AGENTS.md
+  
+## agents.md 自身维护（每 2-4 周强制执行）  
+  
+- 本文件严格控制在 200 行以内（再涨就继续往 `.claude/rules/` 拆）  
+- 每 2 周执行一次「重写 agents.md」任务：先总结过去教训，再人工审核精简  
+- 教训永远写进 tasks/lessons.md，不要塞进本文件  
+- progressive disclosure：本文件只放总纲，细则在 `.claude/rules/` 下分文件加载  
+  
+## .claude/rules/ 入口（按需加载）  
+  
+| 文件 | 适用场景 |  
+| --- | --- |  
+| [.claude/rules/project-structure.md](.claude/rules/project-structure.md) | 项目目录、技术栈、i18n 总览 |  
+| [.claude/rules/never-list.md](.claude/rules/never-list.md) | 所有"绝对不要做"的硬性约束 |  
+| [.claude/rules/coding-style.md](.claude/rules/coding-style.md) | 通用指令、文件大小、命名约定、文件头注释 |  
+| [.claude/rules/api-design.md](.claude/rules/api-design.md) | 接口分类、中转 adapter、错误返回、鉴权限流 |  
+| [.claude/rules/backend.md](.claude/rules/backend.md) | Go 后端、GORM、跨库 SQL、JSON、配置日志 |  
+| [.claude/rules/frontend.md](.claude/rules/frontend.md) | React + Vite + Semi、bun、i18n、状态与请求 |  
+| [.claude/rules/git-workflow.md](.claude/rules/git-workflow.md) | 完成前验证清单、提交规范、受保护操作 |  
+| [.claude/rules/hooks.md](.claude/rules/hooks.md) | PostToolUse 轻量格式化 + Stop 轻量验证 + 手动 review 的分层方案 |  
+  
+写代码 / 改代码前，至少先扫一眼 `never-list.md`，再按场景加载对应规则；遇到模糊场景宁可多读一份，也不要凭印象推。  
+"""
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Initialize project AGENTS.md and .claude/rules docs.")
+    parser = argparse.ArgumentParser(description="Create fixed AGENTS.md and list missing rules docs.")
     parser.add_argument("root", nargs="?", default=".", help="Project root. Defaults to current directory.")
     parser.add_argument(
         "--rules-dir",
         default=".claude/rules",
         help="Rules directory relative to project root. Defaults to .claude/rules.",
     )
-    parser.add_argument("--write", action="store_true", help="Write files. Without this, only dry-run.")
-    parser.add_argument("--force", action="store_true", help="Overwrite existing files. Use only on explicit request.")
+    parser.add_argument("--write", action="store_true", help="Write fixed AGENTS.md and create rules directory.")
+    parser.add_argument("--force", action="store_true", help="Overwrite root AGENTS.md. Does not overwrite rules docs.")
+    parser.add_argument("--json", action="store_true", help="Output machine-readable JSON.")
     return parser.parse_args()
 
 
-def detect_stack(root: Path) -> list[str]:
-    stack: list[str] = []
-    package_json = root / "package.json"
-    if package_json.exists():
-        stack.extend(package_stack(package_json))
-    if (root / "pyproject.toml").exists():
-        stack.append("Python / pyproject")
-    if (root / "requirements.txt").exists():
-        stack.append("Python / requirements.txt")
-    if (root / "go.mod").exists():
-        stack.append("Go")
-    if (root / "Cargo.toml").exists():
-        stack.append("Rust")
-    if not stack:
-        stack.append("待从项目文件补充")
-    return unique(stack)
-
-
-def package_stack(path: Path) -> list[str]:
+def resolve_rules_root(root: Path, rules_dir: str) -> Path:
+    rules_root = (root / rules_dir).resolve()
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return ["Node.js / package.json"]
-    deps = {**data.get("dependencies", {}), **data.get("devDependencies", {})}
-    stack = ["Node.js / package.json"]
-    if "react" in deps:
-        stack.append("React")
-    if "vite" in deps:
-        stack.append("Vite")
-    if "typescript" in deps:
-        stack.append("TypeScript")
-    if "next" in deps:
-        stack.append("Next.js")
-    if "vue" in deps:
-        stack.append("Vue")
-    return stack
+        rules_root.relative_to(root)
+    except ValueError as exc:
+        raise SystemExit(f"Rules directory must stay inside project root: {rules_root}") from exc
+    return rules_root
 
 
-def detect_commands(root: Path) -> list[str]:
-    commands: list[str] = []
-    package_json = root / "package.json"
-    if package_json.exists():
-        try:
-            scripts = json.loads(package_json.read_text(encoding="utf-8")).get("scripts", {})
-        except (OSError, json.JSONDecodeError):
-            scripts = {}
-        runner = "bun" if (root / "bun.lockb").exists() else "npm"
-        for name in ("lint", "typecheck", "type-check", "test", "build", "dev"):
-            if name in scripts:
-                commands.append(f"{runner} run {name}")
-    if (root / "pyproject.toml").exists() or (root / "requirements.txt").exists():
-        commands.extend(["pytest", "ruff check .", "mypy ."])
-    if (root / "go.mod").exists():
-        commands.extend(["go test ./...", "go vet ./..."])
-    if not commands:
-        commands.append("按项目实际脚本补充 lint / type-check / test / build 命令")
-    return unique(commands)
-
-
-def top_dirs(root: Path) -> list[str]:
-    dirs = [
-        child.name
-        for child in sorted(root.iterdir(), key=lambda item: item.name.lower())
-        if child.is_dir() and child.name not in SKIP_TOP_DIRS and not child.name.startswith(".")
-    ]
-    return dirs or ["待补充"]
-
-
-def unique(values: list[str]) -> list[str]:
-    result: list[str] = []
-    seen: set[str] = set()
-    for value in values:
-        if value in seen:
-            continue
-        seen.add(value)
-        result.append(value)
-    return result
-
-
-def bullet(values: list[str]) -> str:
-    return "\n".join(f"- {value}" for value in values)
-
-
-def agents_md(root: Path, rules_dir: str) -> str:
-    project = root.name
-    rules = [
-        ("project-structure.md", "项目目录、技术栈、文件放置原则"),
-        ("never-list.md", "所有绝对不要做的硬性约束"),
-        ("coding-style.md", "通用代码风格、命名、注释、目录文档纪律"),
-        ("api-design.md", "接口边界、adapter、错误返回、兼容性"),
-        ("backend.md", "后端相关约定，当前没有后端时作为未来扩展边界"),
-        ("frontend.md", "前端栈、组件、状态、性能、交互规则"),
-        ("git-workflow.md", "完成前验证、Git 操作边界、汇报格式"),
-        ("hooks.md", "自动化 hooks、轻量格式化、轻量验证分层"),
-    ]
-    rules_table = "\n".join(f"| [{name}]({rules_dir}/{name}) | {purpose} |" for name, purpose in rules)
-    return f"""# AGENTS.md - {project} 项目灵魂手册
-
-## 核心人格与语气
-
-- 默认写成温和、自然、像协作说明的中文。
-- 先直接说结论，再补必要说明；少用明显的 AI 套话和空泛开头。
-- 写 README、说明文档、汇报文档时，先参考同目录已有文档语气，尽量贴近用户文风。
-- 避免把抽象流程、系统、模块写成很口语化的动作主体。
-- 少用过硬的技术汇报腔，优先用朴素、清楚、可执行的表达。
-
-## 核心协作原则
-
-- 用户探索或提问时，认真回应问题本身，不要过早当成执行指令。
-- 如果对任务内容或需求有关键不清楚的地方，先停下来问清楚，再继续。
-- 变更前先理解现有代码和规则，优先小步、可测试、可回退的修改。
-- 用户明确要求执行时，一次性完成当前任务，再汇报结果；不要把每一步都丢给用户确认。
-
-## 强制工作流
-
-1. 非平凡任务先写计划，必要时记录到 `tasks/todo.md`，包含清单、风险点和测试点。
-2. 任务涉及多个方向、多个文件或并行调研时，拆成清晰子任务，避免主上下文混乱。
-3. 每次被用户纠正后，把可复用教训记录到 `tasks/lessons.md` 或长期记忆文件。
-4. 完成前按 `{rules_dir}/git-workflow.md` 做验证，并说明未能验证的部分。
-5. 汇报时列出可能出问题的地方和建议覆盖的测试点。
-
-## 工具与上下文
-
-- 代码导航优先使用语义检索；已知路径的小修改可以直接读写对应文件。
-- 涉及库、框架、SDK、API 或 CLI 的用法时，优先查官方或当前文档。
-- 不读取 `.env`、密钥、凭据；删除、覆盖、批量改写前先说明影响范围。
-
-## MCP 使用规范
-
-- 任何涉及代码检索、上下文理解、调用链追踪、业务调研或查文档的任务，优先选择合适的 MCP / 工具。
-- 代码语义检索优先用 Serena；库和框架文档优先用 Context7；本地批量文件和进程任务优先用 Desktop Commander。
-- 复杂网络调研使用带规划的搜索流程；当前可用工具以实际会话工具列表为准。
-- 调用 MCP 后简短说明用了哪个服务做了什么。
-- 任何 MCP 都不得读取 `.env`、secrets 或凭据；带副作用操作前先说明影响范围。
-
-## MEMORY.md 持久记忆管理
-
-- 项目根目录 `MEMORY.md` 用作长期项目记忆库。
-- 重要架构决策、用户纠正、跨会话需要保留的事实，应以结构化格式追加。
-- `tasks/lessons.md` 存短期教训，`MEMORY.md` 存长期知识。
-- 定期压缩和去重，避免长期记忆膨胀成噪音。
-
-## 分形文档纪律
-
-- 项目根规则放在本文件；细则放在 `{rules_dir}/`，按需加载。
-- 每个业务子目录应有 `Agents.md`：控制在 3 行内，说明目录目的、主要文件、同步提醒。
-- 源码文件头部应有简短 `@purpose / @deps / @exports / @location / @rules` 注释。
-- 文件、接口、依赖、导出或目录结构变化时，同步更新相关头部注释和目录 `Agents.md`。
-
-## AGENTS.md 自身维护
-
-- 本文件尽量控制在 200 行以内；继续增长时，把细则拆到 `{rules_dir}/`。
-- 2-4 周重写一次：先总结近期教训，再人工审核精简。
-- 教训写进 `tasks/lessons.md` 或 `MEMORY.md`，不要堆进本文件。
-- progressive disclosure：本文件只放总纲，细则按需加载。
-
-## 规则入口
-
-| 文件 | 适用场景 |
-| --- | --- |
-{rules_table}
-"""
-
-
-def project_structure_md(root: Path) -> str:
-    return f"""# Project Structure
-
-## 何时加载 / When to load
-
-- 开始理解项目、移动文件、新增目录、判断代码应该放在哪里时加载。
-
-## 项目定位 / Project Overview
-
-- 项目名称：{root.name}
-- 当前定位：已有项目，具体业务目标需要结合 README、源码和用户说明继续补充。
-
-## 技术栈 / Tech Stack
-
-{bullet(detect_stack(root))}
-
-## 目录结构 / Directory Structure
-
-{bullet(top_dirs(root))}
-
-## 文件放置原则 / File Placement Rules
-
-- 新文件优先放在语义最贴近的现有目录，避免为了单个用例新建抽象层。
-- 共享工具放 `utils` / `lib` 一类目录；业务能力放回对应业务模块。
-- 测试文件跟随项目现有约定，优先靠近被测模块或放入现有测试目录。
-
-## 分形文档纪律 / Fractal Documentation
-
-- 新增或调整目录时，同步维护该目录 `Agents.md`。
-- 文件职责、依赖或导出变化时，同步维护文件头部注释。
-"""
-
-
-def never_list_md() -> str:
-    return """# Never List
-
-## 何时加载 / When to load
-
-- 开始任何代码修改、删除文件、批量重构、处理高风险数据前加载。
-
-## 绝对不要做 / Never do / NEVER / Forbidden patterns
-
-- 不要覆盖用户已经手动修改过的文件，除非用户明确要求。
-- 不要读取、打印、提交 `.env`、密钥、令牌、凭据或私人数据。
-- 不要用大规模重写替代小步修改；不要为了显得高级而提前抽象。
-- 不要静默吞掉异常；错误必须有可诊断上下文。
-- 不要绕过现有测试、lint、类型检查，也不要禁用失败测试。
-
-## 高风险区域 / High-risk areas / Critical files
-
-- 配置、迁移、鉴权、支付、数据删除、构建发布、CI/CD、密钥管理相关文件。
-- 项目级规则文件：`AGENTS.md`、`.claude/rules/`、目录 `Agents.md`。
-
-## 不确定时的处理 / When in doubt / Escalation
-
-- 先说明不确定点、可选方案和影响范围，再请求用户补充。
-- 最多尝试三种不同方法；仍卡住时整理尝试、错误输出、诊断和备选路径。
-"""
-
-
-def coding_style_md() -> str:
-    return """# Coding Style
-
-## 何时加载 / When to load
-
-- 写代码、改代码、重命名、拆分文件、添加注释或文档时加载。
-
-## 基本风格 / Basic Style
-
-- 优先直白、可读、容易测试的实现；避免聪明但难维护的技巧。
-- 命名表达真实业务含义；不要用过度抽象的万能名称。
-- import / dependency 保持局部、明确，避免无意义的跨层依赖。
-
-## 文件大小与拆分 / File Size & Splitting
-
-- 一个文件只承担一个清晰责任；膨胀时优先按真实职责拆分。
-- 只有多个具体用例证明必要时再抽象公共层。
-
-## 源码文件头注释 / Source File Header Comments
-
-- 源码文件顶部使用简短 `@purpose / @deps / @exports / @location / @rules`。
-- 头部注释必须基于实际代码，保持务实简洁，不写空泛说明。
-
-## 目录 Agents.md / Directory Agents.md
-
-- 每个业务子目录维护 `Agents.md`，最多 3 行。
-- 文件或结构变化时，同步更新目录 `Agents.md` 和相关源码头部注释。
-
-## React 约定 / React Conventions
-
-- 组件职责清晰；复杂状态和副作用优先抽到 hooks 或 store。
-- 避免不必要 render；依赖数组、memo 和 selector 要保持准确。
-
-## 状态更新约定 / State Update Conventions
-
-- 状态更新动作命名要描述意图；批量更新要保持边界清楚。
-
-## 错误处理 / Error Handling
-
-- 用户可见错误要可理解；日志要保留定位信息但不能泄露敏感数据。
-
-## 注释原则 / Commenting Principles
-
-- 注释解释原因、约束和非显而易见的决策，不重复代码表面含义。
-"""
-
-
-def api_design_md() -> str:
-    return """# API Design
-
-## 何时加载 / When to load
-
-- 新增接口、调整数据结构、接入外部格式、设计 store action 或错误返回时加载。
-
-## 当前项目实际边界 / Current Project Boundaries
-
-- 先以当前仓库已有 API / store / adapter / IO 边界为准。
-- 没有明确后端时，不要凭空设计服务端协议。
-
-## 接口分类 / Interface Classification
-
-- 区分 UI 事件、Store action、IO 读写、渲染接口、格式转换接口。
-
-## Adapter 原则 / Adapter Principles
-
-- 外部格式转换集中在 adapter；业务层使用稳定的内部结构。
-
-## Store action 设计 / Store Action Design
-
-- action 名称描述业务意图；避免把 UI 细节泄漏进核心状态层。
-
-## 错误返回 / Error Returns
-
-- 错误结构保持可诊断；用户提示和开发日志分层处理。
-
-## 权限与鉴权 / Permissions & Auth
-
-- 鉴权、权限、用户身份相关逻辑必须显式，不能散落在 UI 分支里。
-
-## 兼容性 / Compatibility
-
-- schema 和文件格式变更要考虑旧数据；必要时提供迁移或降级路径。
-"""
-
-
-def backend_md() -> str:
-    return """# Backend
-
-## 何时加载 / When to load
-
-- 修改服务端、数据库、API、鉴权、日志、配置或准备新增后端时加载。
-
-## 当前仓库状态 / Current Repository Status
-
-- 先按当前仓库实际存在的后端边界处理；没有后端时只记录未来约定。
-
-## 如果未来新增 Go 后端 / If Future Go Backend Added
-
-- model / migration / repository / service / handler 分层清晰。
-- 跨层依赖通过接口传入，避免全局单例扩散。
-
-## GORM 约定 / GORM Conventions
-
-- model 显式声明字段和索引；查询封装在 repository；迁移可回溯。
-
-## JSON 与错误 / JSON & Error
-
-- JSON 返回结构稳定；错误包含内部诊断信息但不向用户泄露敏感细节。
-
-## 配置与日志 / Configuration & Logging
-
-- 配置来自环境或配置文件；日志脱敏，不打印密钥、令牌、个人数据。
-
-## 与当前前端集成 / Frontend Integration
-
-- 前端优先通过 adapter 消化后端格式变化；保持离线或降级路径清晰。
-"""
-
-
-def frontend_md() -> str:
-    return """# Frontend
-
-## 何时加载 / When to load
-
-- 修改 UI、组件、状态、样式、动画、Canvas/WebGL、导入保存或性能问题时加载。
-
-## 当前前端栈 / Current Frontend Stack
-
-- 以项目实际 package.json 和现有代码为准；不要凭模板假设框架。
-
-## UI 组件 / UI Components
-
-- 组件只承担清晰职责；复用组件放在现有组件目录，业务组件跟随业务模块。
-
-## Tailwind 与主题 / Tailwind & Theming
-
-- 样式优先沿用项目现有系统；不要引入冲突的主题和色彩体系。
-
-## 状态分层 / State Layering
-
-- 区分持久状态、运行态状态、派生状态；避免重复存储同一事实。
-
-## Canvas / WebGL 交互 / Canvas & WebGL Interaction
-
-- 渲染资源创建和释放必须成对；交互状态和渲染循环保持边界清楚。
-
-## 动画 / Animation
-
-- 动画服务于反馈和理解；避免影响可读性、性能或可访问性。
-
-## 导入/保存/加载 / Import Save Load
-
-- 外部格式进入系统前先经过 adapter；保存格式保持向后兼容。
-
-## 请求与外部资源 / Requests & External Resources
-
-- 本地优先；外部资源失败时提供可理解的降级路径。
-
-## 性能 / Performance
-
-- 避免不必要重渲染；昂贵计算使用缓存、分片或后台处理。
-"""
-
-
-def git_workflow_md(root: Path) -> str:
-    return f"""# Git Workflow
-
-## 何时加载 / When to load
-
-- 完成任务前、准备提交、处理冲突、涉及删除/移动/批量变更时加载。
-
-## 完成前验证清单 / Pre-Commit Validation Checklist
-
-- 检查 diff，确认没有无关改动、调试输出、密钥或生成垃圾。
-- 运行项目对应 lint、type-check、test、build；不能运行时说明原因。
-- 新行为需要补测试，或说明未补测试的风险。
-
-## 推荐验证命令 / Recommended Validation Commands
-
-{bullet(detect_commands(root))}
-
-## 手动测试重点 / Manual Testing Focus
-
-- 覆盖被改功能的主路径、失败路径、边界输入和回归风险点。
-
-## Git 操作边界 / Git Operation Boundaries
-
-- 不执行破坏性 git 命令；不回滚用户未明确要求回滚的改动。
-- 提交信息解释为什么改，而不仅是改了什么。
-
-## 提交信息建议 / Commit Message Guidelines
-
-- 使用简短动词开头，说明意图和影响范围。
-
-## 汇报格式 / Reporting Format
-
-- 先说完成了什么，再说验证结果，最后列出未验证或需要注意的风险。
-"""
-
-
-def hooks_md() -> str:
-    return """# Hooks
-
-## 何时加载 / When to load
-
-- 配置自动格式化、保存后检查、提交前检查、工具钩子或轻量验证流程时加载。
-
-## PostToolUse 轻量格式化 / PostToolUse Formatting
-
-- 只做确定、低风险、可重复的格式化；不要在 hook 里做大型重构。
-
-## Stop 轻量验证 / Stop Validation
-
-- Stop 阶段适合跑快速检查；耗时验证应显式告知并按任务需要执行。
-
-## 手动 review 分层 / Manual Review Layers
-
-- 自动检查负责格式和明显错误；人工 review 关注行为、架构和边界。
-
-## 失败处理 / Failure Handling
-
-- hook 失败时保留完整命令和错误摘要，不要静默忽略。
-"""
-
-
-def planned_files(root: Path, rules_root: Path, rules_dir: str) -> dict[Path, str]:
-    return {
-        root / "AGENTS.md": agents_md(root, rules_dir),
-        rules_root / "project-structure.md": project_structure_md(root),
-        rules_root / "never-list.md": never_list_md(),
-        rules_root / "coding-style.md": coding_style_md(),
-        rules_root / "api-design.md": api_design_md(),
-        rules_root / "backend.md": backend_md(),
-        rules_root / "frontend.md": frontend_md(),
-        rules_root / "git-workflow.md": git_workflow_md(root),
-        rules_root / "hooks.md": hooks_md(),
-    }
+def missing_rules(rules_root: Path) -> list[Path]:
+    return [rules_root / name for name in RULE_FILES if not (rules_root / name).exists()]
 
 
 def main() -> int:
@@ -504,30 +163,38 @@ def main() -> int:
     if not root.is_dir():
         raise SystemExit(f"Project root is not a directory: {root}")
 
-    rules_root = (root / args.rules_dir).resolve()
-    try:
-        rules_dir = rules_root.relative_to(root).as_posix()
-    except ValueError as exc:
-        raise SystemExit(f"Rules directory must stay inside project root: {rules_root}") from exc
+    rules_root = resolve_rules_root(root, args.rules_dir)
+    agents_path = root / "AGENTS.md"
+    root_exists = agents_path.exists()
+    rules_missing = missing_rules(rules_root)
 
-    created = 0
-    skipped = 0
-    for path, content in planned_files(root, rules_root, rules_dir).items():
-        exists = path.exists()
-        if exists and not args.force:
-            skipped += 1
-            print(f"SKIP exists: {path}")
-            continue
-        action = "WRITE" if args.write else "DRY-RUN"
-        suffix = "overwrite" if exists else "create"
-        print(f"{action} {suffix}: {path}")
-        created += 1
-        if args.write:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content, encoding="utf-8")
+    if args.write:
+        if not root_exists or args.force:
+            agents_path.write_text(ROOT_AGENTS_TEMPLATE, encoding="utf-8")
+        rules_root.mkdir(parents=True, exist_ok=True)
 
-    mode = "written" if args.write else "would write"
-    print(f"Summary: {created} {mode}, {skipped} skipped.")
+    if args.json:
+        payload = {
+            "root": str(root),
+            "agents_md": str(agents_path),
+            "agents_md_action": "overwrite" if root_exists and args.force else "skip" if root_exists else "create",
+            "rules_dir": str(rules_root),
+            "missing_rules": [path.relative_to(root).as_posix() for path in rules_missing],
+            "note": "Rules docs are intentionally not generated by this script; the agent must write them from project source context.",
+        }
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+
+    action = "overwrite" if root_exists and args.force else "skip" if root_exists else "create"
+    mode = "WRITE" if args.write else "DRY-RUN"
+    print(f"{mode} AGENTS.md {action}: {agents_path}")
+    print(f"{mode} ensure rules directory: {rules_root}")
+    for path in rules_missing:
+        print(f"RULE missing (agent must write from source context): {path.relative_to(root).as_posix()}")
+    print(
+        f"Summary: AGENTS.md {action}; {len(rules_missing)} rules docs missing. "
+        "Rules content is model-generated, not script-generated."
+    )
     return 0
 
 
