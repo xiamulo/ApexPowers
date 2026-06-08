@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apex Sync Agent Mirrors"
+  short_description: "从 .agents 源模板生成 Codex/Claude Code 官方子智能体镜像"
+  default_prompt: "使用 apex-sync-agent-mirrors 从 .agents/*.md 生成 .codex/agents/*.toml 和 .claude/agents/*.md；默认先 dry-run，用户确认或明确要求后再 --write，重新生成时使用 --force。"
