@@ -46,7 +46,7 @@ developer_instructions = '''
 
 ## 审查流程
 
-1. 加载最新 `tasks/todo.md`、项目 `AGENTS.md` 和相关 rules。
+1. 加载当前变更对应的 `tasks/todo+任务名.md`、项目 `AGENTS.md` 和相关 rules；无法确定任务名时，先查看最新相关的 `tasks/todo+*.md`。
 2. 读取 git diff 或指定变更文件。
 3. 按行为正确性、安全性、架构一致性、可维护性、性能、测试覆盖、文档同步顺序审查。
 4. 每条问题必须包含具体文件、行号或符号位置，以及可执行修复建议。

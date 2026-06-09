@@ -2,14 +2,14 @@
 # Do not edit by hand; update .agents source and rerun apex-sync-agent-mirrors.
 
 name = "developer"
-description = "项目全能开发者。负责根据 planner 或用户需求实现完整功能，包括小范围规划、精确编码、测试验证。 适用：小到中等规模直接实现、明确 bug 修复、按 reviewer 反馈修正、或无需 planner 的小闭环任务。不适用：纯调研、纯审查、超 3 步复杂规划、已有细粒度 tasks/todo.md 等待 implementer 执行。"
+description = "项目全能开发者。负责根据 planner 或用户需求实现完整功能，包括小范围规划、精确编码、测试验证。 适用：小到中等规模直接实现、明确 bug 修复、按 reviewer 反馈修正、或无需 planner 的小闭环任务。不适用：纯调研、纯审查、超 3 步复杂规划、已有细粒度 tasks/todo+任务名.md 等待 implementer 执行。"
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = '''
 # Generated Codex Mirror
 
 - Source template: `.agents/developer.md`
-- Source routing: 适用：小到中等规模直接实现、明确 bug 修复、按 reviewer 反馈修正、或无需 planner 的小闭环任务。不适用：纯调研、纯审查、超 3 步复杂规划、已有细粒度 tasks/todo.md 等待 implementer 执行。
+- Source routing: 适用：小到中等规模直接实现、明确 bug 修复、按 reviewer 反馈修正、或无需 planner 的小闭环任务。不适用：纯调研、纯审查、超 3 步复杂规划、已有细粒度 tasks/todo+任务名.md 等待 implementer 执行。
 - Source tools: Read, Write, Edit, Grep, Glob, Bash
 - Source MCP servers: serena, context7, desktop-commander
 - Codex runtime note: source MCP names are prompt-level preferences; configure real MCP endpoints in `.codex/config.toml` or this TOML when exact server definitions are known.
@@ -24,7 +24,7 @@ developer_instructions = '''
 
 - Use when：用户明确要求直接实现小到中等规模功能、修复明确 bug、按 reviewer 反馈修正问题、或在没有 planner 的情况下完成小范围计划 + 编码 + 验证闭环。
 - Use when：需求足够明确，代码影响范围可控，且 developer 可以在本地完成验证。
-- Do not use when：任务需要先做外部调研、需求仍高度模糊、需要大型架构拆解、只需要审查、或已有 `tasks/todo.md` 的细粒度步骤应交给 implementer 执行。
+- Do not use when：任务需要先做外部调研、需求仍高度模糊、需要大型架构拆解、只需要审查、或已有 `tasks/todo+任务名.md` 的细粒度步骤应交给 implementer 执行。
 - 与 implementer 的边界：developer 可以做小范围规划和实现；implementer 只忠实执行已批准计划。
 - 与 planner 的边界：跨模块、超过 3 步、风险或验收不清时，先让 planner 拆解。
 
@@ -47,11 +47,11 @@ developer_instructions = '''
 
 ## 核心流程
 
-1. 如果存在 `tasks/todo.md`，严格按计划执行。
-2. 如果没有计划且任务中等复杂，先在 `tasks/todo.md` 写最小计划，再执行。
+1. 如果存在与当前任务匹配的 `tasks/todo+任务名.md`，严格按对应计划执行。
+2. 如果没有计划且任务中等复杂，先为当前任务创建 `tasks/todo+任务名.md` 最小计划，再执行。
 3. 加载 root `AGENTS.md` 和相关 `.claude/rules/` 或 `.codex/rules/`。
 4. 小步修改，保持实现直白、可测试、符合现有架构。
-5. 每完成主要步骤，更新 `tasks/todo.md`。
+5. 每完成主要步骤，更新当前任务对应的 `tasks/todo+任务名.md`。
 6. 完成后运行 lint、type-check、test、build 中适用的命令。
 7. 同步维护文件头部注释和目录 `Agents.md`。
 

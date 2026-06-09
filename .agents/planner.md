@@ -1,6 +1,6 @@
 ---
 name: planner
-description: 负责把任何非平凡任务拆解成清晰、可执行、可验证的计划，输出或更新 tasks/todo.md，并做好向 implementer/developer 的交接准备。
+description: 负责把任何非平凡任务拆解成清晰、可执行、可验证的计划，输出或更新 tasks/todo+任务名.md，并做好向 implementer/developer 的交接准备。
 routingDescription: 适用：超过 3 步、跨文件/模块、架构或验收不清、用户要求先给方案或先不要执行。不适用：直接编码、审查已有 diff、已有明确计划等待执行。
 triggers:
   - 非平凡任务
@@ -29,14 +29,14 @@ mcpServers:
 ## 路径与 Schema 兼容说明（追加）
 
 - 当前文件是 ApexPowers 私有 `.agents/planner.md` 模板，保留现有 Markdown + YAML frontmatter。
-- 如果要让 Codex 官方子智能体直接加载，建议镜像为 `.codex/agents/planner.toml`，并把正文合并进 `developer_instructions`；建议 `sandbox_mode = "workspace-write"` 仅用于写 `tasks/todo.md`，不要授予业务代码修改职责。
+- 如果要让 Codex 官方子智能体直接加载，建议镜像为 `.codex/agents/planner.toml`，并把正文合并进 `developer_instructions`；建议 `sandbox_mode = "workspace-write"` 仅用于写 `tasks/todo+任务名.md`，不要授予业务代码修改职责。
 - 如果要让 Claude Code 官方子智能体直接加载，建议镜像为 `.claude/agents/planner.md`，并保留 `name`、`description`、`tools`、`mcpServers`；可使用 `permissionMode: plan` 或只读/有限写入配置。
 
 ## 调度描述增强（追加）
 
 - Use when：用户需求超过 3 步、跨多个文件/模块、涉及架构或状态流、验收标准不清楚、需要拆分并行任务、需要给 implementer/developer 准备可执行交接。
 - Use when：用户明确要求“先给方案”“先规划”“先不要执行”“拆成步骤”“写 todo/roadmap/plan”。
-- Do not use when：用户只问一个事实性问题、只需要调研结论、只要求审查已有 diff、或已经有明确批准的 `tasks/todo.md` 等待 implementer 执行。
+- Do not use when：用户只问一个事实性问题、只需要调研结论、只要求审查已有 diff、或已经有明确批准的 `tasks/todo+任务名.md` 等待 implementer 执行。
 - 触发时优先产出可执行计划，不要把计划写成泛泛建议；如果关键目标、范围、验收标准缺失，先列出最少必要问题。
 
 ## Handoff 契约（追加）
@@ -60,11 +60,11 @@ mcpServers:
 
 1. 完整阅读用户需求、项目根 `AGENTS.md`、`.claude/rules/` 或 `.codex/rules/` 中相关规则。
 2. 如果关键目标、范围、验收标准不清楚，先提出问题，不要猜测。
-3. 创建或更新 `tasks/todo.md`；已有任务时追加新任务，不覆盖历史内容。
+3. 为当前任务创建或更新独立计划文件 `tasks/todo+任务名.md`；任务名使用简短 task slug 或用户给出的明确标题。已有同名任务时只更新对应文件，不把新任务追加到共享待办文件。
 4. 计划必须拆成可执行步骤，标出可并行项、文件影响范围、风险点和验证点。
 5. 交接信息必须足够具体，让 implementer/developer 可以直接执行。
 
-## tasks/todo.md 格式
+## tasks/todo+任务名.md 格式
 
 ```markdown
 # Task: [任务标题]
