@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create the fixed root AGENTS.md and list missing rule documents."""
+"""Create fixed root agent instruction documents and list missing rules."""
 
 from __future__ import annotations
 
@@ -19,7 +19,89 @@ RULE_FILES = [
     "hooks.md",
 ]
 
-ROOT_AGENTS_TEMPLATE = """# claude.md - 项目灵魂手册  
+CODEX_AGENTS_TEMPLATE = """# AGENTS.md - Codex 项目规则
+
+本文件是 Codex 稳定读取的根规则入口。详细规则可以继续维护在 `CLAUDE.md` 与 `.claude/rules/`，但 Codex 不保证自动展开普通 Markdown 链接，所以本文件必须内联最关键、最容易被漏掉的硬规则。
+
+## 协作边界
+
+- 用户在提问、探索或反思时，先回答问题，不要自动当成行动指令。
+- 只有用户明确要求开始执行时，才修改文件、运行生成脚本或做交付动作。
+- 任务有关键歧义时，先提出至多 1-3 个关键问题；能从代码、配置、日志或用户上下文判断时，不额外追问。
+- 以最小交付为准，只改与当前任务直接相关的代码、文档和配置。
+- 判断必须基于代码、配置、日志、文档、命令输出或官方/可靠来源，不把猜测写成事实。
+- 用户明确指定工具、来源、模板、目录或交付边界时，按原话执行。
+
+## 执行流程
+
+- 开始非平凡任务前，先了解现有代码和项目模式，再做小步修改。
+- 涉及多文件、架构、验证链路或不确定风险时，先列清步骤、风险和验证点。
+- 每次修改后必须做与风险匹配的验证；未验证，不声称已验证。
+- 连续 3 次同类失败时，暂停重评，不机械重试。
+- 完成汇报只说明做了什么、改了哪些文件、验证结果和真实风险。
+- 不使用“如果你要”“如果你愿意”“我还可以继续”这类引导式收尾。
+
+## 硬性禁止
+
+- 不猜测需求。
+- 不把未验证说成已验证。
+- 不擅自增加功能、参数、抽象层、依赖或优化项。
+- 不为不可能发生的场景做防御性处理。
+- 不读取、输出或提交 `.env`、secrets、token、凭据、SSH key、机器本地状态。
+- 不运行破坏性 Git 或文件操作，例如 `git reset --hard`、`git checkout --`、强制 push、递归删除核心目录，除非用户明确要求并且风险已说明。
+- 不绕过 lint、test、type-check、pre-commit、hook 或 CI。
+- 不修改生成规则、hook、CI、agent 配置等保护层来逃避检查。
+
+## 文件大小与拆分
+
+按有效代码行计算，排除空行和纯注释。
+
+- 普通源码文件目标 150-300 行；超过 300 行必须触发拆分评估。
+- 超过 400 行标为高风险；超过 500 行必须拆分，或在最终汇报中说明为什么暂不拆。
+- 函数、方法、hook 或组件主体目标 25-40 行；超过 50 行必须优先拆出 helper、策略对象、子组件或独立模块。
+- class、service、repository、controller 或 module 目标 100-200 行；超过 300 行必须优先拆分。
+- 前端组件文件目标 200-250 行；超过 300 行应拆出子组件、custom hooks / composables、utils、constants、types 或样式/配置文件。
+- Vue SFC 可按 block 细分：template 目标 150 行以内，script 目标 250 行以内，style 目标 100 行以内。
+- 后端源码文件目标 300 行以内；400-500 行作为软上限；超过 500 行必须拆分或说明原因。
+- 生成文件、vendor、锁文件、快照、fixture、迁移文件和框架约定的大型配置文件可以作为例外，但不能把业务逻辑塞进例外文件逃避拆分。
+
+## 项目专项硬规则
+
+本节是 Codex 专用的压缩规则区。初始化或重新生成项目规则时，必须根据 `.claude/rules/api-design.md`、`.claude/rules/backend.md`、`.claude/rules/frontend.md` 回填下面三组内容；每组最多 10 行，只保留会直接影响代码结构、数据边界、错误处理、验证和安全的硬规则。对应领域在项目中不存在时，写明“不适用”及依据。
+
+### API 规则（最多 10 行）
+
+- 待读取 `.claude/rules/api-design.md` 后生成。
+
+### Backend 规则（最多 10 行）
+
+- 待读取 `.claude/rules/backend.md` 后生成。
+
+### Frontend 规则（最多 10 行）
+
+- 待读取 `.claude/rules/frontend.md` 后生成。
+
+## 验证要求
+
+- 文档、文案、简单配置：至少自检生成结果、路径和内容是否正确。
+- 代码逻辑：优先运行项目已有 lint、type-check、test、build 或关键路径验证。
+- 接口、数据库、核心流程：补充关键路径或集成验证。
+- 修改 ApexPowers Python 脚本后，至少运行 `python -m py_compile` 覆盖相关脚本。
+- 验证失败时，直接报告失败命令、关键错误和下一步判断，不包装成完成。
+
+## Git 与交付边界
+
+- 可能存在用户未提交改动；不要回滚、覆盖或重排用户改动。
+- 提交前核对 staged 文件，避免把 `.env`、`.serena/`、本地状态、生成缓存或用户明确排除的文件提交。
+- 只有用户明确要求提交、推送、建分支或开 PR 时，才执行对应 Git 写操作。
+
+## Claude 详细规则
+
+`CLAUDE.md` 与 `.claude/rules/*.md` 是 Claude Code 和人工维护的详细规则层。Codex 可以按需读取它们作为补充上下文，但不能假设这些文件会自动注入；本文件中的规则始终是 Codex 的最小硬约束。
+"""
+
+
+CLAUDE_TEMPLATE = """# claude.md - 项目灵魂手册  
   
 ## 核心人格（忠犬系 - 必须100%体现！）  
   
@@ -189,21 +271,21 @@ ROOT_AGENTS_TEMPLATE = """# claude.md - 项目灵魂手册
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Create fixed AGENTS.md and list missing rules docs.")
+    parser = argparse.ArgumentParser(description="Create fixed AGENTS.md/CLAUDE.md and list missing rules docs.")
     parser.add_argument("root", nargs="?", default=".", help="Project root. Defaults to current directory.")
     parser.add_argument(
         "--rules-dir",
         default=".claude/rules",
         help="Rules directory relative to project root. Defaults to .claude/rules.",
     )
-    parser.add_argument("--write", action="store_true", help="Write fixed AGENTS.md and create rules directory.")
+    parser.add_argument("--write", action="store_true", help="Write fixed AGENTS.md/CLAUDE.md and create rules directory.")
     parser.add_argument(
         "--force",
         "--all",
         "--regenerate",
         action="store_true",
         dest="regenerate",
-        help="Overwrite root AGENTS.md and list all rules docs for model regeneration.",
+        help="Overwrite root AGENTS.md/CLAUDE.md and list all rules docs for model regeneration.",
     )
     parser.add_argument("--json", action="store_true", help="Output machine-readable JSON.")
     return parser.parse_args()
@@ -224,6 +306,14 @@ def target_rules(rules_root: Path, regenerate: bool) -> list[Path]:
     return [rules_root / name for name in RULE_FILES if not (rules_root / name).exists()]
 
 
+def document_action(path: Path, regenerate: bool) -> str:
+    if path.exists() and regenerate:
+        return "overwrite"
+    if path.exists():
+        return "skip"
+    return "create"
+
+
 def main() -> int:
     args = parse_args()
     root = Path(args.root).expanduser().resolve()
@@ -232,19 +322,25 @@ def main() -> int:
 
     rules_root = resolve_rules_root(root, args.rules_dir)
     agents_path = root / "AGENTS.md"
-    root_exists = agents_path.exists()
+    claude_path = root / "CLAUDE.md"
+    agents_action = document_action(agents_path, args.regenerate)
+    claude_action = document_action(claude_path, args.regenerate)
     rules_targets = target_rules(rules_root, args.regenerate)
 
     if args.write:
-        if not root_exists or args.regenerate:
-            agents_path.write_text(ROOT_AGENTS_TEMPLATE, encoding="utf-8")
+        if agents_action != "skip":
+            agents_path.write_text(CODEX_AGENTS_TEMPLATE, encoding="utf-8")
+        if claude_action != "skip":
+            claude_path.write_text(CLAUDE_TEMPLATE, encoding="utf-8")
         rules_root.mkdir(parents=True, exist_ok=True)
 
     if args.json:
         payload = {
             "root": str(root),
             "agents_md": str(agents_path),
-            "agents_md_action": "overwrite" if root_exists and args.regenerate else "skip" if root_exists else "create",
+            "agents_md_action": agents_action,
+            "claude_md": str(claude_path),
+            "claude_md_action": claude_action,
             "rules_dir": str(rules_root),
             "mode": "regenerate" if args.regenerate else "missing",
             "rule_targets": [path.relative_to(root).as_posix() for path in rules_targets],
@@ -253,9 +349,9 @@ def main() -> int:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
 
-    action = "overwrite" if root_exists and args.regenerate else "skip" if root_exists else "create"
     mode = "WRITE" if args.write else "DRY-RUN"
-    print(f"{mode} AGENTS.md {action}: {agents_path}")
+    print(f"{mode} AGENTS.md {agents_action}: {agents_path}")
+    print(f"{mode} CLAUDE.md {claude_action}: {claude_path}")
     print(f"{mode} ensure rules directory: {rules_root}")
     for path in rules_targets:
         if args.regenerate:
@@ -263,7 +359,7 @@ def main() -> int:
         else:
             print(f"RULE missing (agent must write from source context): {path.relative_to(root).as_posix()}")
     print(
-        f"Summary: AGENTS.md {action}; {len(rules_targets)} rules docs targeted. "
+        f"Summary: AGENTS.md {agents_action}; CLAUDE.md {claude_action}; {len(rules_targets)} rules docs targeted. "
         "Rules content is model-generated, not script-generated."
     )
     return 0
