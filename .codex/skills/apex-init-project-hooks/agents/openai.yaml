@@ -1,0 +1,28 @@
+name: apex-init-project-hooks
+description: Install ApexPowers Codex and Claude Code loop hooks with agent-root hook config/runtime and project-local loop state.
+instructions: |
+  Use this skill when the user wants loop hooks, deterministic guardrails, or review gates generated from ApexPowers.
+  Hook config/runtime should live in Codex/Claude Code agent homes by default. Project-local state remains under tasks/.
+
+  Always run the installer in dry-run mode first:
+
+    python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root>
+
+  Only write after the target list is reasonable:
+
+    python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root> --codex-home "$env:USERPROFILE\.codex" --claude-home "$env:USERPROFILE\.claude" --write
+
+  Use manifest-aware update or uninstall when refreshing or removing hook installations:
+
+    python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root> --codex-home "$env:USERPROFILE\.codex" --claude-home "$env:USERPROFILE\.claude" --update
+    python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root> --codex-home "$env:USERPROFILE\.codex" --claude-home "$env:USERPROFILE\.claude" --uninstall
+    python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root> --codex-home "$env:USERPROFILE\.codex" --claude-home "$env:USERPROFILE\.claude" --uninstall --write
+
+  Merge <codex-home>/hooks.json and <claude-home>/settings.json by preserving existing user hooks and replacing only Apex-managed apex_loop.py entries.
+  Repeated installs must remain idempotent: do not duplicate Apex hook entries.
+  Record ownership in tasks/loops/.apex-manifest.json and the agent-root apex/manifest.json files.
+  Keep tasks/loops/workflow.md editable; hook runtime reads [apex-state:*] blocks and injects the current workflow state into SessionStart and UserPromptSubmit.
+  When installing agent-root hooks, migrate legacy project-local Apex hooks by stripping only Apex-managed project config entries and removing generated project-local runtime copies.
+  Do not overwrite hand-written hook scripts unless the user explicitly asked to regenerate or force.
+  Use --hook-scope project only when the user explicitly asks for legacy project-local hook files.
+  After changing the hook runtime or installer, run py_compile and the hook unittest suite.

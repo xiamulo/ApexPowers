@@ -1,0 +1,29 @@
+{
+  "review": {
+    "required": true,
+    "status": "pending",
+    "attempts": 1,
+    "review_path": "tasks/reviews/apex-loop-hooks.md",
+    "run_id": "019eb9e1-abb4-7701-9ede-330d86162c24"
+  },
+  "version": 1,
+  "slug": "apex-loop-hooks",
+  "todo_path": "tasks/todo+apex-loop-hooks.md",
+  "changed_files": [
+    ".codex/skills/apex-init-project-agent/scripts/init_project_agent.py",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop.py",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_core.py",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_routes.py",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_runtime.py",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_utils.py",
+    ".codex/skills/apex-init-project-hooks/scripts/init_project_hooks.py",
+    ".codex/skills/webapp-testing/examples/console_logging.py",
+    ".codex/skills/webapp-testing/examples/element_discovery.py",
+    ".codex/skills/webapp-testing/examples/static_html_automation.py",
+    ".codex/skills/webapp-testing/scripts/with_server.py",
+    "tests/__init__.py",
+    "tests/test_apex_loop_hooks.py",
+    "tests/test_apex_loop_installer.py"
+  ],
+  "updated_at": "2026-06-12T13:18:34+0800"
+}

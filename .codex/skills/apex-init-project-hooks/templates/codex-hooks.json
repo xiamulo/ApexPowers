@@ -1,0 +1,80 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .codex/hooks/apex_loop.py session-start --host codex --route default",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .codex/hooks/apex_loop.py user-prompt-submit --host codex --route default",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Shell|PowerShell|Edit|Write|MultiEdit|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .codex/hooks/apex_loop.py pre-tool-use --host codex --route safety",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .codex/hooks/apex_loop.py post-tool-use --host codex --route edit",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Shell|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .codex/hooks/apex_loop.py post-tool-use --host codex --route bash",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .codex/hooks/apex_loop.py post-tool-use --host codex --route always",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .codex/hooks/apex_loop.py stop --host codex --route default",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

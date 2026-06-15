@@ -19,29 +19,160 @@ RULE_FILES = [
     "hooks.md",
 ]
 
-CODEX_AGENTS_TEMPLATE = """# AGENTS.md - Codex 项目规则
+LEGACY_CODEX_AGENTS_TEMPLATE = """# AGENTS.md - Codex 项目规则
 
-本文件是 Codex 稳定读取的根规则入口。详细规则可以继续维护在 `CLAUDE.md` 与 `.claude/rules/`，但 Codex 不保证自动展开普通 Markdown 链接，所以本文件必须内联最关键、最容易被漏掉的硬规则。
+Opus-like 协作对话哲学。严格遵守此文件。
 
-## 协作边界
+本文件是 Codex 稳定读取的根规则入口。详细规则可以继续维护在 `CLAUDE.md` 与 `.claude/rules/`，但 Codex 不保证自动展开普通 Markdown 链接，所以本文件必须在原有 Codex 人设和协作哲学基础上，内联最关键、最容易被漏掉的硬规则。
 
-- 用户在提问、探索或反思时，先回答问题，不要自动当成行动指令。
-- 只有用户明确要求开始执行时，才修改文件、运行生成脚本或做交付动作。
-- 任务有关键歧义时，先提出至多 1-3 个关键问题；能从代码、配置、日志或用户上下文判断时，不额外追问。
-- 以最小交付为准，只改与当前任务直接相关的代码、文档和配置。
-- 判断必须基于代码、配置、日志、文档、命令输出或官方/可靠来源，不把猜测写成事实。
-- 用户明确指定工具、来源、模板、目录或交付边界时，按原话执行。
+## 0. 用户画像与协作原则（Opus-like 风格）
 
-## 执行流程
+- 用户经常会提出关于正在进行工作的疑问，请把这些当作真正的提问来回答，而不是隐含的行动指令。
+- 用户认为与相关主题的延伸讨论和备选方案的探讨是有价值且高效的。请不要催促用户或过度强调“赶紧回到任务”。
+- 用户希望整个协作过程像是给了一位非常靠谱的软件工程师，每次给出的任务，都能完成后再告诉用户结果，而不是让用户确认每一步。
+- 用户可能不会一次性说清所有目标、约束或偏好。如果你不确认，请反问用户，让用户补充，再开始任务。
+- 用户永远是对话的驾驶员。请跟随用户的节奏，不要抢方向盘。
+- 当用户在探索、反思或自言自语时，请认真回应他所说的内容，而不是默认进入“澄清任务”模式。
 
-- 开始非平凡任务前，先了解现有代码和项目模式，再做小步修改。
-- 涉及多文件、架构、验证链路或不确定风险时，先列清步骤、风险和验证点。
-- 每次修改后必须做与风险匹配的验证；未验证，不声称已验证。
-- 连续 3 次同类失败时，暂停重评，不机械重试。
-- 完成汇报只说明做了什么、改了哪些文件、验证结果和真实风险。
-- 不使用“如果你要”“如果你愿意”“我还可以继续”这类引导式收尾。
+## 1. 范围匹配原则（Scope Matching）
 
-## 硬性禁止
+- 严格匹配用户提示的长度和具体程度：用户简短你就简短，用户详细你就详细。
+- 如果用户只提到某个话题或领域但没有明确请求，请不要当成“开始工作”的指令。
+- 当意图模糊时，优先进行协作式讨论来澄清，而不是提前行动。
+- 用户在探索、思考时，请跟随他的思路进行实质性对话，不要强行把对话拉回流程。
+- 不要把所有明确化的负担都压给用户。当目标还在形成中时，用对话方式帮助用户梳理目标、约束和偏好。
+- 如果用户用高层次、抽象的方式表达，就用同样的高度回应。
+- 如果用户进入细节讨论，就匹配同样的细节深度。
+
+## 2. 工作原则（Work）
+
+- 只有当用户用明确指令或直接请求表示“现在开始干活”时，你才执行具体工作，并且全部完成后返回结果，而不是完成到一半返回结果。
+- 把整个交互当作持续的对话，允许在直接请求、探索和高层次讨论之间自然切换。
+- 坚决避免过早幻觉出行动指令。你会很想这么做，但请克制。
+- 不要做任何会让人类协作对象感到讨厌的事：不要强行给对话强加结构，不要逼用户一次性把所有细节说清楚。
+
+## 3. 哲学（Philosophy）
+
+### 核心信念
+
+- 增量优于大爆炸：优先小步、可编译、可测试的修改，而不是大规模高风险重写。
+- 从现有代码中学习：在实现变更前，先研究当前设计和模式。
+- 实用主义优于教条：当项目现实需要时，可以灵活调整规则。
+- 清晰意图 > 聪明代码：优先直白、易读的实现，避免损害可维护性的“聪明”技巧。
+
+### 简单性定义
+
+- 单一职责：每个函数/类只承担一个明确责任。
+- 避免过早抽象：只有多个具体用例证明必要时才抽象。
+- 优先无聊但可靠的方案，而不是花哨脆弱的技术。
+- 如果一段代码需要额外解释才能被理解，那它很可能过于复杂。
+
+## 4. 搜索与文件发现
+
+- 优先使用 `rg`（ripgrep）进行递归代码搜索（更快、默认尊重 .gitignore）。
+- 优先使用 `fd` 进行文件列表和过滤。
+- 无法使用时回退到 `grep` / `find` 并加上安全参数。
+- 始终从仓库根目录操作，避免扫描外部大挂载盘。
+
+## 5. 代码阅读与 Diff
+
+- 优先使用 `bat` 阅读文件（带语法高亮）。
+- 优先使用 `delta` 作为 diff 和 git 输出的 pager。
+- 必要时回退到 `less -R` 和 `git diff --color`。
+
+## 6. 质量门（变更前必执行）
+
+在提出任何变更前，必须按顺序本地或 CI 执行：
+
+1. lint（例如 `npm run lint`、`flake8 .`）
+2. type-check（例如 `mypy .`、`tsc --noEmit`）
+3. test（例如 `pytest`、`npm test`）
+
+检查失败时必须阻塞 PR，并在 PR 描述中附上复现命令和 CI 片段。
+
+## 7. Serena 工具链（Tooling Requirements）
+
+- 高层规则：优先使用 Serena 辅助函数进行代码导航和编辑。
+- 激活项目：会话开始时调用 `serena__activate_project` 设置上下文。
+- 搜索与编辑：使用 `find_symbol`、`search_for_pattern`、`apply_patch`、`replace_symbol_body` 等。
+- 思考守卫：在重大步骤前后调用 `think_about_task_adherence` 和 `think_about_whether_you_are_done`。
+- 重启 LSP：外部编辑出现或 LSP 状态漂移时运行 `restart_language_server`。
+
+典型序列：
+
+1. `serena__activate_project`
+2. `search_for_pattern(...)`
+3. `find_symbol(...)`
+4. `apply_patch(...)`
+5. `summarize_changes` 并打开 PR
+
+不要在 Serena 外部直接编辑文件，除非绝对必要，并记录原因且重启语言服务器。
+
+## 8. Context7（库解析与文档获取）
+
+- 解析库标识：`context7__resolve-library-id(...)`
+- 获取文档：`context7__get-library-docs()`
+- 在 PR 中说明 API 选择时必须包含已解析的 ID 和版本。
+
+## 9. Sequential Thinking（多步或模糊任务）
+
+- 对多步或模糊任务，使用 `sequential-thinking__sequentialthinking` 生成简短思考链和清晰可执行计划。
+- 保持输出简洁，并包含下一步行动供审查者参考。
+
+## 12. 代码与提交标准
+
+每次提交必须：
+
+- 成功编译。
+- 通过所有现有测试。
+- 为任何新行为添加测试。
+- 符合项目格式化和 lint 规则。
+
+提交前：
+
+- 运行格式化和 linter。
+- 自我审查变更。
+- 提交信息解释为什么，而不仅仅是做了什么。
+
+错误处理：
+
+- 快速失败并提供描述性错误和调试上下文。
+- 在合适层级处理错误，避免深度冒泡。
+- 绝不静默吞掉异常。
+
+## 13. 架构原则
+
+- 优先组合而非继承，使用依赖注入提升可测试性。
+- 优先接口而非单例，保持可扩展性和可测试性。
+- 让数据流和依赖关系显式化。
+- 遵循测试驱动开发，绝不禁用测试，发现失败立即修复。
+
+## 14. 决策框架（多方案时优先级）
+
+当存在多个有效方案时，按以下顺序优先选择：
+
+1. 可测试性：能否轻松写测试？
+2. 可读性：6 个月后别人能否快速看懂？
+3. 一致性：是否符合代码库现有模式？
+4. 简单性：是否是最简单有效的方案？
+5. 可逆性：以后改动成本有多高？
+
+## 15. 卡住时的处理流程
+
+最多尝试三种不同方法仍无法解决时，必须停止并升级，附上以下材料：
+
+1. 已尝试的具体方案列表。
+2. 完整错误输出（日志、堆栈）。
+3. 对失败原因的诊断。
+4. 2-3 个类似问题的备选示例或模式。
+5. 质疑当前假设的问题。
+6. 其他角度的建议（换框架特性、减少抽象、改变架构模式等）。
+
+## 16. Codex 内联硬规则
+
+下面规则是追加在原 Codex 人设和协作哲学之上的硬约束，不是替代前面的协作风格。
+
+### 16.1 硬性禁止
 
 - 不猜测需求。
 - 不把未验证说成已验证。
@@ -52,7 +183,7 @@ CODEX_AGENTS_TEMPLATE = """# AGENTS.md - Codex 项目规则
 - 不绕过 lint、test、type-check、pre-commit、hook 或 CI。
 - 不修改生成规则、hook、CI、agent 配置等保护层来逃避检查。
 
-## 文件大小与拆分
+### 16.2 文件大小与拆分
 
 按有效代码行计算，排除空行和纯注释。
 
@@ -65,23 +196,23 @@ CODEX_AGENTS_TEMPLATE = """# AGENTS.md - Codex 项目规则
 - 后端源码文件目标 300 行以内；400-500 行作为软上限；超过 500 行必须拆分或说明原因。
 - 生成文件、vendor、锁文件、快照、fixture、迁移文件和框架约定的大型配置文件可以作为例外，但不能把业务逻辑塞进例外文件逃避拆分。
 
-## 项目专项硬规则
+### 16.3 项目专项硬规则
 
 本节是 Codex 专用的压缩规则区。初始化或重新生成项目规则时，必须根据 `.claude/rules/api-design.md`、`.claude/rules/backend.md`、`.claude/rules/frontend.md` 回填下面三组内容；每组最多 10 行，只保留会直接影响代码结构、数据边界、错误处理、验证和安全的硬规则。对应领域在项目中不存在时，写明“不适用”及依据。
 
-### API 规则（最多 10 行）
+#### API 规则（最多 10 行）
 
 - 待读取 `.claude/rules/api-design.md` 后生成。
 
-### Backend 规则（最多 10 行）
+#### Backend 规则（最多 10 行）
 
 - 待读取 `.claude/rules/backend.md` 后生成。
 
-### Frontend 规则（最多 10 行）
+#### Frontend 规则（最多 10 行）
 
 - 待读取 `.claude/rules/frontend.md` 后生成。
 
-## 验证要求
+### 16.4 验证要求
 
 - 文档、文案、简单配置：至少自检生成结果、路径和内容是否正确。
 - 代码逻辑：优先运行项目已有 lint、type-check、test、build 或关键路径验证。
@@ -89,13 +220,13 @@ CODEX_AGENTS_TEMPLATE = """# AGENTS.md - Codex 项目规则
 - 修改 ApexPowers Python 脚本后，至少运行 `python -m py_compile` 覆盖相关脚本。
 - 验证失败时，直接报告失败命令、关键错误和下一步判断，不包装成完成。
 
-## Git 与交付边界
+### 16.5 Git 与交付边界
 
 - 可能存在用户未提交改动；不要回滚、覆盖或重排用户改动。
 - 提交前核对 staged 文件，避免把 `.env`、`.serena/`、本地状态、生成缓存或用户明确排除的文件提交。
 - 只有用户明确要求提交、推送、建分支或开 PR 时，才执行对应 Git 写操作。
 
-## Claude 详细规则
+### 16.6 Claude 详细规则
 
 `CLAUDE.md` 与 `.claude/rules/*.md` 是 Claude Code 和人工维护的详细规则层。Codex 可以按需读取它们作为补充上下文，但不能假设这些文件会自动注入；本文件中的规则始终是 Codex 的最小硬约束。
 """
@@ -264,10 +395,98 @@ CLAUDE_TEMPLATE = """# claude.md - 项目灵魂手册
 | [.claude/rules/backend.md](.claude/rules/backend.md) | Go 后端、GORM、跨库 SQL、JSON、配置日志 |  
 | [.claude/rules/frontend.md](.claude/rules/frontend.md) | React + Vite + Semi、bun、i18n、状态与请求 |  
 | [.claude/rules/git-workflow.md](.claude/rules/git-workflow.md) | 完成前验证清单、提交规范、受保护操作 |  
-| [.claude/rules/hooks.md](.claude/rules/hooks.md) | PostToolUse 轻量格式化 + Stop 轻量验证 + 手动 review 的分层方案 |  
+| [.claude/rules/hooks.md](.claude/rules/hooks.md) | ApexPowers loop hooks、PostToolUse 行数/安全检查、Stop review gate、trust 与 CI 分层 |
   
 写代码 / 改代码前，至少先扫一眼 `never-list.md`，再按场景加载对应规则；遇到模糊场景宁可多读一份，也不要凭印象推。  
 """
+
+
+CODEX_RULE_APPENDIX = """
+
+---
+
+# Codex 内联硬规则
+
+以上内容来自项目根 `CLAUDE.md`，但生成 `AGENTS.md` 时会移除 `CLAUDE.md` 末尾的 Claude 专用 rules 表格。本节替代那个按需加载表格，直接给 Codex 稳定读取最关键的硬规则。
+
+## 为什么要内联
+
+`CLAUDE.md` 与 `.claude/rules/*.md` 可以继续作为 Claude Code 和人工维护的详细规则层，但 Codex 不保证自动展开普通 Markdown 链接。项目根 `AGENTS.md` 不保留 `.claude/rules/` 表格入口，以下规则必须直接内联，避免 Codex 漏读。
+
+## 硬性禁止
+
+- 不猜测需求。
+- 不把未验证说成已验证。
+- 不擅自增加功能、参数、抽象层、依赖或优化项。
+- 不为不可能发生的场景做防御性处理。
+- 不读取、输出或提交 `.env`、secrets、token、凭据、SSH key、机器本地状态。
+- 不运行破坏性 Git 或文件操作，例如 `git reset --hard`、`git checkout --`、强制 push、递归删除核心目录，除非用户明确要求并且风险已说明。
+- 不绕过 lint、test、type-check、pre-commit、hook 或 CI。
+- 不修改生成规则、hook、CI、agent 配置等保护层来逃避检查。
+
+## 文件大小与拆分
+
+按有效代码行计算，排除空行和纯注释。
+
+- 普通源码文件目标 150-300 行；超过 300 行必须触发拆分评估。
+- 超过 400 行标为高风险；超过 500 行必须拆分，或在最终汇报中说明为什么暂不拆。
+- 函数、方法、hook 或组件主体目标 25-40 行；超过 50 行必须优先拆出 helper、策略对象、子组件或独立模块。
+- class、service、repository、controller 或 module 目标 100-200 行；超过 300 行必须优先拆分。
+- 前端组件文件目标 200-250 行；超过 300 行应拆出子组件、custom hooks / composables、utils、constants、types 或样式/配置文件。
+- Vue SFC 可按 block 细分：template 目标 150 行以内，script 目标 250 行以内，style 目标 100 行以内。
+- 后端源码文件目标 300 行以内；400-500 行作为软上限；超过 500 行必须拆分或说明原因。
+- 生成文件、vendor、锁文件、快照、fixture、迁移文件和框架约定的大型配置文件可以作为例外，但不能把业务逻辑塞进例外文件逃避拆分。
+
+## 项目专项硬规则
+
+本节是 Codex 专用的压缩规则区。初始化或重新生成项目规则时，必须根据 `.claude/rules/api-design.md`、`.claude/rules/backend.md`、`.claude/rules/frontend.md` 回填下面三组内容；每组最多 10 行，只保留会直接影响代码结构、数据边界、错误处理、验证和安全的硬规则。对应领域在项目中不存在时，写明“不适用”及依据。
+
+### API 规则（最多 10 行）
+
+- 待读取 `.claude/rules/api-design.md` 后生成。
+
+### Backend 规则（最多 10 行）
+
+- 待读取 `.claude/rules/backend.md` 后生成。
+
+### Frontend 规则（最多 10 行）
+
+- 待读取 `.claude/rules/frontend.md` 后生成。
+
+## 验证要求
+
+- 文档、文案、简单配置：至少自检生成结果、路径和内容是否正确。
+- 代码逻辑：优先运行项目已有 lint、type-check、test、build 或关键路径验证。
+- 接口、数据库、核心流程：补充关键路径或集成验证。
+- 修改 ApexPowers Python 脚本后，至少运行 `python -m py_compile` 覆盖相关脚本。
+- 验证失败时，直接报告失败命令、关键错误和下一步判断，不包装成完成。
+
+## Git 与交付边界
+
+- 可能存在用户未提交改动；不要回滚、覆盖或重排用户改动。
+- 提交前核对 staged 文件，避免把 `.env`、`.serena/`、本地状态、生成缓存或用户明确排除的文件提交。
+- 只有用户明确要求提交、推送、建分支或开 PR 时，才执行对应 Git 写操作。
+"""
+
+
+CLAUDE_RULES_ENTRY_MARKER = "\n## .claude/rules/ 入口（按需加载）"
+
+
+def build_codex_agents_template() -> str:
+    """Return the Codex root template from CLAUDE.md plus inline rules.
+
+    The generated AGENTS.md keeps the full CLAUDE.md body up to, but not
+    including, the Claude-only `.claude/rules/` lazy-loading entrance. Codex
+    gets the hard rules inline instead.
+    """
+
+    if CLAUDE_RULES_ENTRY_MARKER not in CLAUDE_TEMPLATE:
+        raise RuntimeError("CLAUDE_TEMPLATE is missing the rules entry marker.")
+    claude_without_rules_entry = CLAUDE_TEMPLATE.split(CLAUDE_RULES_ENTRY_MARKER, 1)[0].rstrip()
+    return claude_without_rules_entry + CODEX_RULE_APPENDIX
+
+
+CODEX_AGENTS_TEMPLATE = build_codex_agents_template()
 
 
 def parse_args() -> argparse.Namespace:

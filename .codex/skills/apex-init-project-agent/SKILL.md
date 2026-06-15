@@ -9,9 +9,9 @@ description: 初始化已有项目的项目级 AGENTS.md、CLAUDE.md 和 .claude
 
 运行 `scripts/init_project_agent.py <project-root>`。默认只预览；确认范围合理后，才传入 `--write` 真正写入固定的根 `AGENTS.md`、`CLAUDE.md`，并创建 `.claude/rules/` 目录。
 
-项目根目录 `AGENTS.md` 是 Codex 稳定读取的核心入口，必须使用脚本里的 Codex 固定模板原文。它要内联最关键的硬规则、验证要求、文件拆分阈值和安全边界，不要只写“去读 `.claude/rules`”。
+项目根目录 `AGENTS.md` 是 Codex 稳定读取的核心入口，必须使用脚本里的 Codex 固定模板原文。它的主体必须等于当前 `CLAUDE.md` 固定模板去掉 `.claude/rules/ 入口（按需加载）` 后的内容；Codex 硬规则、验证要求、文件拆分阈值和安全边界追加在主体后面，用来替代 AGENTS.md 里的按需加载入口。不要替代、摘要或重写 `CLAUDE.md` 主体其他部分。
 
-`AGENTS.md` 中的 `项目专项硬规则` 是唯一允许模型回填的 Codex 专项区块。生成或重写 `.claude/rules/api-design.md`、`.claude/rules/backend.md`、`.claude/rules/frontend.md` 后，必须分别把这三份文档中最有效、最硬性的规则压缩到对应小节，每组最多 10 行。只保留会直接影响代码结构、数据边界、错误处理、验证和安全的规则；不要搬运解释、背景或宽泛建议。
+`AGENTS.md` 中追加的 `Codex 内联硬规则 / 项目专项硬规则` 下面的 API、Backend、Frontend 三个小节是唯一允许模型回填的 Codex 专项区块。生成或重写 `.claude/rules/api-design.md`、`.claude/rules/backend.md`、`.claude/rules/frontend.md` 后，必须分别把这三份文档中最有效、最硬性的规则压缩到对应小节，每组最多 10 行。只保留会直接影响代码结构、数据边界、错误处理、验证和安全的规则；不要搬运解释、背景或宽泛建议。
 
 项目根目录 `CLAUDE.md` 是 Claude Code 入口，必须使用脚本里的 Claude 固定模板原文，不要总结、改写、删减或重新组织。它保持现有 `.claude/rules/` 分层入口和 Claude 协作风格。
 
@@ -105,6 +105,17 @@ description: 初始化已有项目的项目级 AGENTS.md、CLAUDE.md 和 .claude
 ## Git 操作边界 / Git Operation Boundaries（只读与禁止操作）
 ## 提交信息建议 / Commit Message Guidelines（格式建议）
 ## 汇报格式 / Reporting Format（完成时汇报模板）
+
+# hooks.md
+## 何时加载 / When to load（明确触发时机）
+## 已安装 Hook / Installed Hooks（Codex 与 Claude Code 配置入口）
+## Route Registry / Route Registry（事件、matcher、handler 的唯一事实源）
+## Prompt / Edit / Stop 边界（advisory 与 hard gate 分层）
+## 结构化失败输出 / Structured Failures（guard、reason、fix、failure_class、run_id）
+## 行数门禁 / Line Length Guard（warning 与 hard block）
+## Review Loop / Review Loop（tasks/reviews 与 Stop gate）
+## 安全门禁 / Security Guard（危险命令、secrets、疑似 token）
+## 与 pre-commit / CI 的关系（即时 guardrail 与最终验证）
 ```
 
 写每个二级标题时，先补一个或多个三级标题，例如 `### 当前项目约定`、`### 已确认事实`、`### 例外与不适用项`、`### 执行要求`，再把根据源码分析出的具体内容写进去。
@@ -114,6 +125,8 @@ description: 初始化已有项目的项目级 AGENTS.md、CLAUDE.md 和 .claude
 生成 `frontend.md` 的 `UI 组件 / UI Components` 时，必须写出前端专项拆分规则。默认建议：组件文件（如 `.tsx`、`.jsx`、`.vue`、`.svelte`）目标 200-250 行；300 行作为软上限；超过 300 行应拆出子组件、custom hooks / composables、utils、constants、types 或样式/配置文件；超过 500 行必须视为高风险并说明为什么暂不拆分。Vue SFC 可以按 block 细分：template 目标 150 行以内，script 目标 250 行以内，style 目标 100 行以内。若项目已有 ESLint、Biome、Sonar、review checklist 或 CI 规则，应优先复用现有阈值；如果现有代码大面积超限，先把阈值写成 warning / review trigger，并给出渐进收敛策略，不要要求一次性重写。
 
 生成 `backend.md` 的 `文件大小与服务拆分 / File Size & Service Splitting` 时，必须写出后端专项拆分规则。默认建议：后端源码文件目标 300 行以内；400-500 行作为软上限；超过 500 行必须拆分或说明原因。函数和方法目标 25-40 行；超过 50 行必须优先拆分。class、service、repository、controller 或 module 目标 100-200 行；超过 300 行必须优先拆分。Go、Python、Ruby、Java、Node 等项目应优先复用现有 linter 阈值；没有现成规则时，按 AI 编程默认阈值写入，并把复杂算法、协议生成代码、ORM migration、测试 fixture 和框架 glue code 列为可审查例外。
+
+生成 `hooks.md` 时，必须先检查目标项目是否存在 `.codex/hooks.json`、`.claude/settings.json`、`.codex/hooks/apex_loop.py`、`.claude/hooks/apex_loop.py` 或 `tasks/loops/`。如果已安装 ApexPowers loop hooks，写明当前 hook 入口、route registry、Prompt 只 advisory、Pre/Post/Stop 才 hard gate、failure JSONL 位置、review request 文件和 trust / `/hooks` review 步骤。如果尚未安装，只写“未安装”及可运行的 `apex-init-project-hooks` dry-run / write 命令，不要假装 hook 已生效。
 
 完成 `api-design.md`、`backend.md`、`frontend.md` 后，必须回写根 `AGENTS.md` 的三个专项小节：
 
