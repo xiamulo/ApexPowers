@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120" role="img" aria-labelledby="title desc">
+  <title id="title">ApexPowers 项目流程与效果</title>
+  <desc id="desc">ApexPowers 从私有 skill 包安装到目标项目，生成规则文档、代码说明、agent 镜像和 loop hooks，并在运行时提供上下文注入、提示和门禁。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#334155"/>
+    </marker>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 40px "Segoe UI", "Microsoft YaHei", Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 18px "Segoe UI", "Microsoft YaHei", Arial, sans-serif; fill: #475569; }
+      .section-title { font: 700 20px "Segoe UI", "Microsoft YaHei", Arial, sans-serif; fill: #0f172a; }
+      .body { font: 400 16px "Segoe UI", "Microsoft YaHei", Arial, sans-serif; fill: #334155; }
+      .small { font: 400 14px "Segoe UI", "Microsoft YaHei", Arial, sans-serif; fill: #475569; }
+      .mono { font: 600 14px Consolas, "Segoe UI", "Microsoft YaHei", monospace; fill: #1e293b; }
+      .chip { font: 700 13px "Segoe UI", "Microsoft YaHei", Arial, sans-serif; fill: #ffffff; letter-spacing: 0; }
+      .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; rx: 16; filter: url(#softShadow); }
+      .source { fill: #e0f2fe; stroke: #38bdf8; }
+      .install { fill: #ecfdf5; stroke: #34d399; }
+      .script { fill: #fff7ed; stroke: #fb923c; }
+      .output { fill: #eef2ff; stroke: #818cf8; }
+      .runtime { fill: #fdf2f8; stroke: #f472b6; }
+      .guard { fill: #fee2e2; stroke: #f87171; }
+      .arrow { stroke: #334155; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .soft-line { stroke: #94a3b8; stroke-width: 1.5; fill: none; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1600" height="1120"/>
+
+  <text class="title" x="60" y="60">ApexPowers 项目流程与效果</text>
+  <text class="subtitle" x="60" y="94">私有 Codex / Claude Code skill 包：复制到目标项目后，生成协作规则、子智能体镜像与 loop hook 门禁。</text>
+
+  <rect class="box source" x="60" y="130" width="292" height="382"/>
+  <text class="section-title" x="84" y="166">1. ApexPowers 源仓库</text>
+  <text class="body" x="84" y="204">
+    <tspan x="84" dy="0">- README 是安装和使用入口</tspan>
+    <tspan x="84" dy="30">- .codex/skills/apex-* 是自有流程</tspan>
+    <tspan x="84" dy="30">- .claude/skills 提供 Claude 会话初始化</tspan>
+    <tspan x="84" dy="30">- .agents/*.md 是 agent 源模板</tspan>
+    <tspan x="84" dy="30">- agent 镜像输出给 Codex / Claude</tspan>
+    <tspan x="84" dy="30">- 前端 / GSAP / testing skills 已 vendored</tspan>
+    <tspan x="84" dy="30">- tests 锁定 hook 安装和运行时契约</tspan>
+  </text>
+  <rect x="84" y="450" width="242" height="34" rx="17" fill="#0284c7"/>
+  <text class="chip" x="104" y="472">源事实：模板包，不是传统 app</text>
+
+  <rect class="box install" x="398" y="130" width="248" height="382"/>
+  <text class="section-title" x="422" y="166">2. 安装面</text>
+  <text class="body" x="422" y="204">
+    <tspan x="422" dy="0">项目内安装</tspan>
+    <tspan class="mono" x="422" dy="25">.codex/skills/</tspan>
+    <tspan class="mono" x="422" dy="23">.claude/skills/</tspan>
+    <tspan class="mono" x="422" dy="23">.agents/</tspan>
+    <tspan x="422" dy="40">本机全局安装</tspan>
+    <tspan class="mono" x="422" dy="25">~/.codex/skills</tspan>
+    <tspan class="mono" x="422" dy="23">~/.claude/skills</tspan>
+    <tspan x="422" dy="40">公开项目可忽略私有 Apex skills，</tspan>
+    <tspan x="422" dy="24">只保留官方 vendored skills。</tspan>
+  </text>
+  <rect x="422" y="450" width="194" height="34" rx="17" fill="#059669"/>
+  <text class="chip" x="445" y="472">效果：下游项目可复用</text>
+
+  <rect class="box script" x="692" y="130" width="360" height="486"/>
+  <text class="section-title" x="716" y="166">3. 初始化 / 同步动作</text>
+  <text class="body" x="716" y="205">
+    <tspan class="mono" x="716" dy="0">apex-session-init-*</tspan>
+    <tspan x="716" dy="23">读取 AGENTS / CLAUDE，确认当前规则。</tspan>
+    <tspan class="mono" x="716" dy="36">apex-init-project-agent</tspan>
+    <tspan x="716" dy="23">写固定 AGENTS.md / CLAUDE.md，列出 rules。</tspan>
+    <tspan x="716" dy="23">rules 内容必须由 agent 读源码后生成。</tspan>
+    <tspan class="mono" x="716" dy="36">apex-init-project-code</tspan>
+    <tspan x="716" dy="23">扫描缺头部注释的代码文件。</tspan>
+    <tspan class="mono" x="716" dy="36">apex-init-project-file</tspan>
+    <tspan x="716" dy="23">扫描缺 Agents.md 的目录。</tspan>
+    <tspan class="mono" x="716" dy="36">apex-sync-agent-mirrors</tspan>
+    <tspan x="716" dy="23">.agents 源模板生成 Codex / Claude 镜像。</tspan>
+    <tspan class="mono" x="716" dy="36">apex-init-project-hooks</tspan>
+    <tspan x="716" dy="23">安装 hook runtime、host JSON、manifest，</tspan>
+    <tspan x="716" dy="23">并写入项目 loop 状态。</tspan>
+  </text>
+
+  <rect class="box output" x="1096" y="130" width="444" height="486"/>
+  <text class="section-title" x="1120" y="166">4. 目标项目产物 / 效果</text>
+  <text class="body" x="1120" y="205">
+    <tspan x="1120" dy="0">协作规则层</tspan>
+    <tspan class="mono" x="1140" dy="25">AGENTS.md, CLAUDE.md, .claude/rules/*.md</tspan>
+    <tspan x="1120" dy="40">上下文说明层</tspan>
+    <tspan class="mono" x="1140" dy="25">代码头注释, 目录 Agents.md</tspan>
+    <tspan x="1120" dy="40">子智能体层</tspan>
+    <tspan class="mono" x="1140" dy="25">.codex/agents/*.toml</tspan>
+    <tspan class="mono" x="1140" dy="23">.claude/agents/*.md</tspan>
+    <tspan x="1120" dy="40">loop 状态层</tspan>
+    <tspan class="mono" x="1140" dy="25">tasks/loops, tasks/reviews, tasks/lessons.md</tspan>
+    <tspan x="1120" dy="40">host hook 层</tspan>
+    <tspan class="mono" x="1140" dy="25">&lt;codex-home&gt;/hooks.json + hooks/apex_loop.py</tspan>
+    <tspan class="mono" x="1140" dy="23">&lt;claude-home&gt;/settings.json + hooks/apex_loop.py</tspan>
+  </text>
+
+  <path class="arrow" d="M 352 320 C 374 320, 374 320, 394 320"/>
+  <path class="arrow" d="M 646 320 C 668 320, 668 320, 688 320"/>
+  <path class="arrow" d="M 1052 320 C 1074 320, 1074 320, 1092 320"/>
+
+  <rect class="box runtime" x="60" y="660" width="1480" height="360"/>
+  <text class="section-title" x="84" y="700">5. Loop Hook 运行时效果</text>
+  <text class="small" x="84" y="728">RouteRegistry 渲染 Codex / Claude hook 配置；HookInput 容错解析 host payload；HookContext 统一 repo、git diff、run_id 和失败日志。</text>
+
+  <rect x="84" y="760" width="270" height="196" rx="14" fill="#ecfeff" stroke="#06b6d4" stroke-width="1.5"/>
+  <text class="section-title" x="106" y="794">SessionStart</text>
+  <text class="body" x="106" y="826">
+    <tspan x="106" dy="0">注入当前上下文：</tspan>
+    <tspan x="106" dy="25">branch、diff、workflow state、</tspan>
+    <tspan x="106" dy="25">todo、review、lessons。</tspan>
+    <tspan x="106" dy="40">效果：开工时少丢上下文。</tspan>
+  </text>
+
+  <rect x="374" y="760" width="270" height="196" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="1.5"/>
+  <text class="section-title" x="396" y="794">UserPromptSubmit</text>
+  <text class="body" x="396" y="826">
+    <tspan x="396" dy="0">输出 workflow-state block。</tspan>
+    <tspan x="396" dy="25">按 prompt 给 planning / review</tspan>
+    <tspan x="396" dy="25">/ done 路线提示。</tspan>
+    <tspan x="396" dy="40">效果：只提醒，不硬阻塞。</tspan>
+  </text>
+
+  <rect x="664" y="760" width="270" height="196" rx="14" fill="#fef2f2" stroke="#ef4444" stroke-width="1.5"/>
+  <text class="section-title" x="686" y="794">PreToolUse</text>
+  <text class="body" x="686" y="826">
+    <tspan x="686" dy="0">SecurityGuard 硬拦截：</tspan>
+    <tspan x="686" dy="25">危险命令、force push、</tspan>
+    <tspan x="686" dy="25">远程脚本管道、secrets 路径。</tspan>
+    <tspan x="686" dy="40">效果：高风险操作 fail closed。</tspan>
+  </text>
+
+  <rect x="954" y="760" width="270" height="196" rx="14" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+  <text class="section-title" x="976" y="794">PostToolUse</text>
+  <text class="body" x="976" y="826">
+    <tspan x="976" dy="0">写后检查：</tspan>
+    <tspan x="976" dy="25">secret content、有效代码行数、</tspan>
+    <tspan x="976" dy="25">.agents 镜像漂移提醒。</tspan>
+    <tspan x="976" dy="40">效果：结构化 warn / block。</tspan>
+  </text>
+
+  <rect x="1244" y="760" width="270" height="196" rx="14" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="1.5"/>
+  <text class="section-title" x="1266" y="794">Stop / task-completed</text>
+  <text class="body" x="1266" y="826">
+    <tspan x="1266" dy="0">完成门禁：</tspan>
+    <tspan x="1266" dy="25">镜像漂移、代码 diff 未审查、</tspan>
+    <tspan x="1266" dy="25">Ready 后缺验证或 diff 已变更。</tspan>
+    <tspan x="1266" dy="40">效果：必须 review + validation。</tspan>
+  </text>
+
+  <path class="soft-line" d="M 219 760 L 219 735 L 1379 735 L 1379 760"/>
+  <path class="soft-line" d="M 509 760 L 509 735"/>
+  <path class="soft-line" d="M 799 760 L 799 735"/>
+  <path class="soft-line" d="M 1089 760 L 1089 735"/>
+
+  <rect class="box guard" x="60" y="1042" width="1480" height="46"/>
+  <text class="body" x="84" y="1072">维护验证：修改 Python 脚本后运行 py_compile；修改 hook runtime 后运行 unittest。Loop hooks 是即时 guardrail，不替代项目自己的 lint / type-check / test / CI。</text>
+</svg>

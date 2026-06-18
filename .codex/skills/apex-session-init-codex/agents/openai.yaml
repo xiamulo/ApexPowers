@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apex Session Init Codex"
+  short_description: "Read project rules before Codex work"
+  default_prompt: "Use $apex-session-init-codex before starting this Codex task."
