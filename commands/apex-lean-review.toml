@@ -1,0 +1,2 @@
+description = "Review the current diff for unnecessary abstractions, dependencies, and code"
+prompt = "Use apex-lean-review on the current diff. Review over-engineering only, not general correctness. Find deletions, stdlib/native replacements, dependency removals, speculative abstractions, and shrink opportunities. Preserve security, trust-boundary validation, data-loss prevention, accessibility, and explicit user requirements."

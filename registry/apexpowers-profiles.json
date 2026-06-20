@@ -1,0 +1,142 @@
+{
+  "schemaVersion": "apexpowers.profiles.v1",
+  "defaultProfile": "core",
+  "profiles": {
+    "core": {
+      "description": "Minimal ApexPowers project/session initialization, agent mirror, and health-check profile.",
+      "codexSkills": [
+        "apex-session-init-codex",
+        "apex-init-project-agent",
+        "apex-init-project-code",
+        "apex-init-project-file",
+        "apex-sync-agent-mirrors",
+        "apex-doctor"
+      ],
+      "claudeSkills": [
+        "apex-session-init-claude-code"
+      ],
+      "agents": [
+        "researcher",
+        "planner",
+        "developer",
+        "implementer",
+        "code-reviewer"
+      ],
+      "commands": [
+        "apex-doctor",
+        "apex-sync-agent-mirrors"
+      ],
+      "hooks": false
+    },
+    "hooks": {
+      "description": "Manifest-managed Codex and Claude Code loop hook installation profile.",
+      "codexSkills": [
+        "apex-init-project-hooks",
+        "apex-doctor"
+      ],
+      "commands": [
+        "apex-init-project-hooks",
+        "apex-doctor"
+      ],
+      "hooks": {
+        "installer": "apex-init-project-hooks",
+        "defaultMode": "dry-run",
+        "requiresTrust": true,
+        "writesHostConfig": true,
+        "managedByManifest": true
+      }
+    },
+    "planning": {
+      "description": "Requirement grilling, PRD synthesis, and issue slicing workflow profile.",
+      "codexSkills": [
+        "apex-grill-with-docs",
+        "apex-to-prd",
+        "apex-to-issues"
+      ],
+      "commands": [
+        "apex-orchestrate-delivery"
+      ],
+      "hooks": false
+    },
+    "research": {
+      "description": "GitHub-backed external solution research profile.",
+      "codexSkills": [
+        "github-solution-research"
+      ],
+      "agents": [
+        "researcher"
+      ],
+      "hooks": false
+    },
+    "frontend": {
+      "description": "Frontend design, local web-app testing, React/Next.js, and UI review profile.",
+      "codexSkills": [
+        "frontend-design",
+        "webapp-testing",
+        "web-design-guidelines",
+        "next-best-practices",
+        "react-best-practices"
+      ],
+      "hooks": false
+    },
+    "quality": {
+      "description": "Web quality, accessibility, performance, SEO, and lean-review profile.",
+      "codexSkills": [
+        "web-quality-audit",
+        "accessibility",
+        "performance",
+        "core-web-vitals",
+        "seo",
+        "best-practices",
+        "apex-lean-review"
+      ],
+      "commands": [
+        "apex-lean-review"
+      ],
+      "hooks": false
+    },
+    "gsap": {
+      "description": "GSAP animation profile.",
+      "codexSkills": [
+        "gsap-core",
+        "gsap-scrolltrigger",
+        "gsap-performance",
+        "gsap-timeline",
+        "gsap-plugins",
+        "gsap-utils",
+        "gsap-react",
+        "gsap-frameworks"
+      ],
+      "hooks": false
+    },
+    "full": {
+      "description": "All ApexPowers skills and workflow surfaces for private full installs.",
+      "extends": [
+        "core",
+        "hooks",
+        "planning",
+        "research",
+        "frontend",
+        "quality",
+        "gsap"
+      ],
+      "agents": [
+        "perf-optimizer"
+      ],
+      "commands": [
+        "apex-doctor",
+        "apex-init-project-hooks",
+        "apex-sync-agent-mirrors",
+        "apex-lean-review",
+        "apex-orchestrate-delivery"
+      ],
+      "hooks": {
+        "installer": "apex-init-project-hooks",
+        "defaultMode": "dry-run",
+        "requiresTrust": true,
+        "writesHostConfig": true,
+        "managedByManifest": true
+      }
+    }
+  }
+}

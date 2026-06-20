@@ -44,7 +44,7 @@ class ApexLoopHookTests(unittest.TestCase):
         subprocess.run(["git", "commit", "-m", "init"], cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 
     def test_render_config_contains_stable_routes(self) -> None:
-        """Codex config is rendered from the route registry."""
+        """Legacy Codex JSON config is rendered from the route registry."""
 
         result = subprocess.run(
             [sys.executable, str(RUNTIME), "render-config", "codex", "--script-path", ".codex/hooks/apex_loop.py"],
@@ -64,6 +64,36 @@ class ApexLoopHookTests(unittest.TestCase):
         self.assertIn("PreToolUse", config["hooks"])
         self.assertIn("PostToolUse", config["hooks"])
         self.assertIn("Stop", config["hooks"])
+
+    def test_render_codex_toml_config_contains_stable_routes(self) -> None:
+        """Codex TOML config is rendered from the route registry."""
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(RUNTIME),
+                "render-config",
+                "codex",
+                "--script-path",
+                ".codex/hooks/apex_loop.py",
+                "--config-format",
+                "toml",
+            ],
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("# >>> apex-managed-hooks-begin", result.stdout)
+        self.assertIn("[[hooks.UserPromptSubmit]]", result.stdout)
+        self.assertIn("[[hooks.PreToolUse]]", result.stdout)
+        self.assertIn("[[hooks.PostToolUse]]", result.stdout)
+        self.assertIn("[[hooks.Stop]]", result.stdout)
+        self.assertIn('--host codex --route ', result.stdout)
 
     def test_user_prompt_submit_is_advisory(self) -> None:
         """Prompt route hints must never block."""

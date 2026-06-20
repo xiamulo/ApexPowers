@@ -15,7 +15,7 @@ Hook 配置和 runtime 默认安装到对应 agent 根目录：Codex 使用 `COD
 
 ## 生成目标
 
-- Codex agent root：`<codex-home>/hooks.json` 与 `<codex-home>/hooks/apex_loop.py`
+- Codex agent root：`<codex-home>/config.toml` 中的 Apex 托管 `[[hooks.*]]` 块，与 `<codex-home>/hooks/apex_loop.py`
 - Claude Code agent root：`<claude-home>/settings.json` 与 `<claude-home>/hooks/apex_loop.py`
 - 项目目录：`tasks/loops/`、`tasks/loops/workflow.md`、`tasks/reviews/`、`tasks/lessons.md`
 - Ownership manifest：`tasks/loops/.apex-manifest.json`、`<codex-home>/apex/manifest.json`、`<claude-home>/apex/manifest.json`
@@ -32,16 +32,19 @@ python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --c
 python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --uninstall
 python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --uninstall --write
 python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --hook-scope project --write
-python .codex\skills\apex-init-project-hooks\scripts\apex_loop.py render-config codex --script-path "$CodexHome/hooks/apex_loop.py"
+python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --codex-config-format json --write
+python .codex\skills\apex-init-project-hooks\scripts\apex_loop.py render-config codex --script-path "$CodexHome/hooks/apex_loop.py" --config-format toml
 ```
 
 ## 覆盖规则
 
 - 不存在的文件会创建。
-- 已有 `<claude-home>/settings.json`、`<codex-home>/hooks.json` 会做 JSON 合并：保留用户已有 hook，只替换 Apex 管理的 `apex_loop.py` 条目。
+- 已有 `<codex-home>/config.toml` 会保留用户配置，只替换 Apex 托管块；非法 TOML 默认跳过，避免破坏用户文件。
+- 已有 `<claude-home>/settings.json` 会做 JSON 合并：保留用户已有 hook，只替换 Apex 管理的 `apex_loop.py` 条目。
+- 只有显式 `--codex-config-format json` 或旧项目级布局才写 Codex `hooks.json`。
 - 已由 ApexPowers 生成且含有生成标记的 runtime 文件会自动覆盖。
 - 没有生成标记的既有 hook 脚本默认跳过。
-- 既有 hook 配置不是合法 JSON 时默认跳过，避免破坏用户文件。
+- 既有 JSON hook 配置不是合法 JSON 时默认跳过，避免破坏用户文件。
 - `tasks/loops/workflow.md` 与 `tasks/lessons.md` 是用户可编辑状态文件；默认只创建，不覆盖已修改内容，卸载时保留。
 - Manifest hash 使用 LF 归一化，Windows / Unix 换行差异不会误判为用户修改。
 - 用户明确要求“重新生成 / 覆盖 / 刷新 / regenerate”时，使用 `--force` 或 `--regenerate`。
@@ -50,11 +53,11 @@ python .codex\skills\apex-init-project-hooks\scripts\apex_loop.py render-config 
 ## 重复安装与迁移
 
 - 已经安装过 agent-root hooks 时，再次运行 `--write` 会先移除已有 Apex 管理的 `apex_loop.py` 条目，再写入新条目，不会重复追加。
-- 已经安装过旧项目级 hooks 时，默认 agent-root 安装会清理项目 `.codex/hooks.json`、`.claude/settings.json` 中的 Apex 条目，并删除带生成标记的项目级 runtime 副本。
+- 已经安装过旧项目级 hooks 时，默认 agent-root 安装会清理项目 `.codex/hooks.json`、`.codex/config.toml`、`.claude/settings.json` 中的 Apex 条目，并删除带生成标记的项目级 runtime 副本。
 - 如果旧项目级 host 配置里有用户自己的 hook，会保留用户 hook，只移除 Apex 管理的 legacy 条目。
 - 没有生成标记的项目级 runtime 文件不会删除。
 - `--update` 是 manifest-aware reinstall；默认 dry run，带 `--write` 才落盘。
-- `--uninstall` 只处理 manifest 记录的 Apex-managed 文件；host JSON 使用 structured scrubber，runtime 文件必须 hash 匹配、带生成标记或使用 `--force` 才删除。
+- `--uninstall` 只处理 manifest 记录的 Apex-managed 文件；Codex TOML 使用托管块 scrubber，Claude Code JSON 使用 structured scrubber，runtime 文件必须 hash 匹配、带生成标记或使用 `--force` 才删除。
 
 ## Workflow-state
 

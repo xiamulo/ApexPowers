@@ -1,0 +1,2 @@
+description = "Check ApexPowers installation health without writing files"
+prompt = "Run Apex doctor in read-only mode for the current project. Inspect project skills, agent mirrors, hook manifests, host configs, workflow state, and git status. Report pass/warn/fail findings with concrete fixes. Do not install or modify anything unless the user explicitly asks."

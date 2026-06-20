@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apexpowers-cli"
+version = "0.1.0"
+description = "ApexPowers profile installer and distribution CLI."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+apex = "apexpowers_cli.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

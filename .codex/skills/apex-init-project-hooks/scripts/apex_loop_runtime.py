@@ -378,6 +378,7 @@ def parse_args() -> argparse.Namespace:
     render_parser = subparsers.add_parser("render-config")
     render_parser.add_argument("render_host", choices=["codex", "claude"])
     render_parser.add_argument("--script-path", required=True)
+    render_parser.add_argument("--config-format", choices=["json", "toml"], default="json")
     return parser.parse_args()
 
 
@@ -394,7 +395,13 @@ def main() -> int:
 
     args = parse_args()
     if args.command == "render-config":
-        print(HostConfigRenderer(RouteRegistry()).render(args.render_host, args.script_path), end="")
+        renderer = HostConfigRenderer(RouteRegistry())
+        if args.config_format == "toml":
+            if args.render_host != "codex":
+                raise SystemExit("TOML hook config rendering is only supported for Codex.")
+            print(renderer.render_toml(args.render_host, args.script_path), end="")
+        else:
+            print(renderer.render_json(args.render_host, args.script_path), end="")
         return 0
 
     runtime = ApexLoopRuntime()

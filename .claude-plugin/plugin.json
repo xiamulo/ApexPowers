@@ -1,0 +1,20 @@
+{
+  "name": "apexpowers",
+  "version": "0.1.0",
+  "description": "Private ApexPowers Claude Code skills and command prompts for project workflow initialization and health checks.",
+  "author": {
+    "name": "xiamulo",
+    "url": "https://github.com/xiamulo"
+  },
+  "homepage": "https://github.com/xiamulo/ApexPowers",
+  "repository": "https://github.com/xiamulo/ApexPowers",
+  "license": "UNLICENSED",
+  "keywords": ["claude-code", "skills", "agents", "workflow", "private"],
+  "skills": [
+    "./.claude/skills/"
+  ],
+  "commands": [
+    "./commands/"
+  ],
+  "mcpServers": {}
+}

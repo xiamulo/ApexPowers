@@ -1,0 +1,28 @@
+{
+  "name": "apexpowers",
+  "version": "0.1.0",
+  "description": "Private ApexPowers Codex skills for project initialization, agent mirrors, loop hook guardrails, planning, issue workflows, and distribution checks.",
+  "author": {
+    "name": "xiamulo",
+    "url": "https://github.com/xiamulo"
+  },
+  "homepage": "https://github.com/xiamulo/ApexPowers",
+  "repository": "https://github.com/xiamulo/ApexPowers",
+  "license": "UNLICENSED",
+  "keywords": ["codex", "skills", "agents", "hooks", "workflow", "private"],
+  "skills": "./.codex-plugin/profiles/core/skills/",
+  "interface": {
+    "displayName": "ApexPowers",
+    "shortDescription": "Private Codex skill pack for Apex project workflows.",
+    "longDescription": "ApexPowers packages project initialization skills, agent mirror generation, manifest-managed loop hooks, doctor checks, PRD/issue workflows, and review guardrails for private Codex use.",
+    "developerName": "xiamulo",
+    "category": "Developer Tools",
+    "capabilities": ["Instructions", "Skills", "Workflow", "Lifecycle hooks via installer"],
+    "websiteURL": "https://github.com/xiamulo/ApexPowers",
+    "defaultPrompt": [
+      "Use apex-session-init-codex before starting work.",
+      "Use apex-doctor to check installation health.",
+      "Use apex-init-project-hooks to install loop hooks with manifest ownership."
+    ]
+  }
+}

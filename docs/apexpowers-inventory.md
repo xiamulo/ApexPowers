@@ -7,8 +7,11 @@
 | 文件 | 用途 |
 | --- | --- |
 | `README.md` | ApexPowers 的安装、复制、手动运行脚本、hook 安装、隐私和维护命令入口。 |
+| `NOTICE.md` | 分发 NOTICE。记录 Apex 自有内容、vendored skills 来源组、版本/许可证据和公开发布前置条件。 |
 | `.gitattributes` | 统一文本换行策略，降低跨平台 diff 噪音。 |
 | `.gitignore` | 排除本地状态、缓存、凭据和 Python 生成文件。 |
+| `.codex-plugin/plugin.json` | Codex 薄 plugin manifest。只声明 skills 和界面元数据，不直接安装 hooks。 |
+| `.claude-plugin/plugin.json` | Claude Code 薄 plugin manifest。声明 Claude skills 与 command prompt wrappers，不直接安装 hooks。 |
 
 ## Apex 自有 Skills
 
@@ -21,6 +24,8 @@
 | `.codex/skills/apex-init-project-file/SKILL.md` | 扫描缺少目录级 `Agents.md` 的文件夹。每个目录说明控制在极简范围，用来给 agent 快速定位目录职责。 |
 | `.codex/skills/apex-sync-agent-mirrors/SKILL.md` | 从 `.agents/*.md` 源模板生成官方 Codex `.toml` 和 Claude Code `.md` 子智能体镜像。 |
 | `.codex/skills/apex-init-project-hooks/SKILL.md` | 安装 Apex loop hooks。默认把 host 配置和 runtime 放进 Codex / Claude agent root，把 loop 状态留在目标项目。 |
+| `.codex/skills/apex-doctor/SKILL.md` | 只读健康检查入口。检查 core skills、agent mirrors、hook manifests、runtime/config、workflow state 和 git status。 |
+| `.codex/skills/apex-lean-review/SKILL.md` | 反过度工程审查入口。显式检查可删除代码、stdlib/native 替代、YAGNI 抽象和依赖收缩机会。 |
 | `.codex/skills/apex-grill-with-docs/SKILL.md` | 需求烤问工作流。先确认用户最多愿意回答多少问题，再只追问影响项目走向的问题，并维护 `CONTEXT.md` / ADR。 |
 | `.codex/skills/apex-to-prd/SKILL.md` | 把已讨论清楚的上下文、领域术语和架构决定整理成正式 PRD，并发布到 issue tracker。 |
 | `.codex/skills/apex-to-issues/SKILL.md` | 把 PRD / spec / plan 拆成可独立实现、可验证、按依赖顺序发布的 vertical-slice issues。 |
@@ -32,6 +37,24 @@
 | `.codex/skills/apex-grill-with-docs/CONTEXT-FORMAT.md` | 需求烤问时维护 `CONTEXT.md` 的格式模板，用于沉淀领域术语、约束和已确认事实。 |
 | `.codex/skills/apex-grill-with-docs/ADR-FORMAT.md` | 架构决策记录模板，用于记录重要方案选择、背景、取舍和影响范围。 |
 | `.codex/skills/*/agents/openai.yaml` | 对应 skill 的 OpenAI agent 元配置，供 skill 安装/分发时保留调用面信息。 |
+
+## 分发层与跨宿主文档
+
+| 文件 | 用途 |
+| --- | --- |
+| `docs/apex-agent-portability.md` | ApexPowers 跨宿主适配矩阵。区分 skill-capable、command-capable、lifecycle-hook-capable 和 instruction-only 宿主。 |
+| `docs/apex-parallel-delivery-orchestration.md` | worktree / issue / PR 级并行交付编排协议。串起 6 个角色模板、官方 agent 镜像、`apex-to-issues` 和 Stop review request gate。 |
+| `docs/platform-native-solutions.md` | 平台原生能力清单。供 `apex-lean-review` 和 reviewer 判断是否需要依赖、抽象或自定义实现。 |
+| `docs/supply-chain-trust-security.md` | 供应链、hook trust、威胁模型、生成文件 provenance、update/uninstall 破坏性边界、无遥测和 secret/path guard false-positive 策略。 |
+| `docs/supply-chain-manifest.sha256` | trust-critical 分发文件的 byte-level SHA-256 manifest，用于 release review 漂移检测。 |
+| `commands/apex-doctor.toml` | host command prompt wrapper，引导只读运行 apex-doctor。 |
+| `commands/apex-init-project-hooks.toml` | host command prompt wrapper，引导 dry-run / install loop hooks。 |
+| `commands/apex-sync-agent-mirrors.toml` | host command prompt wrapper，引导从 `.agents` 重新生成 Codex / Claude mirrors。 |
+| `commands/apex-lean-review.toml` | host command prompt wrapper，引导过度工程审查。 |
+| `commands/apex-orchestrate-delivery.toml` | host command prompt wrapper，引导显式编排 worktree / issue / PR 级并行交付。 |
+| `scripts/check_apex_distribution.py` | 分发一致性检查。验证 plugin manifests、commands、portability 文档、platform-native 文档、lean skill 和 benchmark 方法。 |
+| `benchmarks/README.md` | ApexPowers 离线 benchmark 方法说明，明确不复用 Ponytail 结论。 |
+| `benchmarks/apex_distribution_benchmark.py` | 离线测量 distribution check、doctor、installer dry-run 和 route config render 的耗时。 |
 
 ## 子智能体源模板与镜像
 
@@ -68,7 +91,8 @@
 | --- | --- |
 | `.codex/skills/apex-init-project-hooks/templates/codex-hooks.json` | Codex hook 配置模板参考。实际安装时由 route registry 渲染。 |
 | `.codex/skills/apex-init-project-hooks/templates/claude-settings.json` | Claude Code settings 模板参考。实际安装时由 route registry 渲染。 |
-| `<codex-home>/hooks.json` | Codex host hook 配置，安装器合并 Apex 条目并保留用户 hook。 |
+| `<codex-home>/config.toml` | Codex host hook 配置。安装器写入 Apex 托管 TOML block，并保留用户配置。 |
+| `<codex-home>/hooks.json` | 旧 Codex JSON hook 配置兼容路径，仅在显式 `--codex-config-format json` 或旧项目级布局时使用。 |
 | `<codex-home>/hooks/apex_loop*.py` | Codex 侧 runtime 副本。 |
 | `<claude-home>/settings.json` | Claude Code host hook 配置，安装器合并 Apex 条目并保留用户 hook。 |
 | `<claude-home>/hooks/apex_loop*.py` | Claude Code 侧 runtime 副本。 |
@@ -82,6 +106,7 @@
 | 文件 | 用途 |
 | --- | --- |
 | `tasks/todo+apex-loop-hooks.md` | 当前 Apex loop hooks 改造计划，记录目标、非目标、架构、hook 规则、阶段计划和 DoD。 |
+| `tasks/todo+apex-ponytail-production.md` | 从 Ponytail 借鉴分发层做法的生产化计划，覆盖跨宿主、薄 manifest、lean review、平台原生清单、漂移测试和 benchmark 方法。 |
 | `tasks/reviews/apex-loop-hooks.md` | 对 active todo 的 review gate 文件。Stop gate 要求 `Status: Ready` 和 `Validation: Pass`。 |
 | `tasks/research+trellis-apexpowers-opportunities.md` | 对 Trellis 方案的源码对照研究，记录 ApexPowers 可借鉴模块和不建议照搬的部分。 |
 | `tasks/lessons.md` | loop hooks 注入的近期经验记录来源。 |
@@ -169,3 +194,5 @@
 | --- | --- |
 | `tests/test_apex_loop_hooks.py` | 验证 hook runtime 路由、上下文注入、安全门禁、行数门禁、secrets、镜像漂移和 Stop review gate。 |
 | `tests/test_apex_loop_installer.py` | 验证 hook installer 的 agent-root 默认安装、项目级兼容、JSON 合并、幂等、update、uninstall、manifest 和 legacy migration。 |
+| `tests/test_apex_doctor.py` | 验证 apex-doctor 的只读健康检查和 manifest/config/runtime 一致性判断。 |
+| `tests/test_apex_distribution.py` | 验证 plugin manifests、commands、跨宿主文档、lean skill、platform-native 清单和 benchmark 方法没有漂移。 |

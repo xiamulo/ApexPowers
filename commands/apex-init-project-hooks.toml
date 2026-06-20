@@ -1,0 +1,2 @@
+description = "Plan or install ApexPowers loop hooks through the manifest-aware installer"
+prompt = "Use apex-init-project-hooks for the current project. Start with a dry run and explain the planned Codex/Claude host config, runtime files, workflow state files, and manifests. Only use --write when the user explicitly asks to install. Preserve existing user hooks and do not bypass hook trust review."

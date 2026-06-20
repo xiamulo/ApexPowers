@@ -1,0 +1,17 @@
+# ApexPowers trust-critical artifact hashes.
+# Format: <sha256>  <repo-relative-path>
+9339799cf961559fca4fc6336466104553295d64017baf0210575072f840a07c  .codex-plugin/plugin.json
+758aecaeec2749b76685bb37aad62a923ab37fd1821d7d3238f3bcd0f376786a  .claude-plugin/plugin.json
+f0c5f39c0a48afbdbad1647073ce22a194eda8aa8f543f239ccada824ee268bb  registry/apexpowers-profiles.json
+f88596306e665307faa3980253f09e2f164bbe57d760224e01dd88654673b8cf  commands/apex-doctor.toml
+9136e3dc24d4c4ac6fb46ccc8ea1d65dafe4f838689c153f1dc7f558ece944b3  commands/apex-init-project-hooks.toml
+64c3bbf6d7b1897376f93717ea76fa026ffc576d8199fae554c96fbd894bb685  commands/apex-sync-agent-mirrors.toml
+6f1a8b8ccc7db2b37bdf288c26557f4d36e5e57c94f0ff52171667f31abebe42  commands/apex-lean-review.toml
+762a2749951a2bf17b194fa4963097c913d51853d9720e18965423ffc6917b84  commands/apex-orchestrate-delivery.toml
+118cc91e84339a04aec49a0ade8b576ca3b58aeee50b5c0330b247bd4d315e79  .codex/skills/apex-init-project-hooks/SKILL.md
+ddf905ac23714365d83175731c38b5f995195b14b670073f7b754cf0a3b8a561  .codex/skills/apex-init-project-hooks/scripts/init_project_hooks.py
+6c95e99b14338d814b8cc789089ee50e4159df89778af6af92cd8972c3ef6567  .codex/skills/apex-init-project-hooks/scripts/apex_loop_routes.py
+d4090bb4c3c74087df8bd263d741a5b3dc46ff05ad221cecfe1e209eab9e1ae7  .codex/skills/apex-init-project-hooks/scripts/apex_loop_runtime.py
+230e926f3a3e6be1458c139d7ce39a7d788346566d4605561a7d6f9545a33c10  docs/supply-chain-trust-security.md
+ebb62ec2ecb46657001274761944833d649e9cc28cf99dddc66c4bdfb10047c4  docs/apex-parallel-delivery-orchestration.md
+c476c715ed1837ce1165a8ea7c4d05e40661040cfc7c488c9d650d407fc0ed16  NOTICE.md

@@ -1,0 +1,2 @@
+description = "Regenerate Codex and Claude Code agent mirrors from .agents source templates"
+prompt = "Use apex-sync-agent-mirrors for the current project. Treat .agents/*.md as the only source templates, preview first, then regenerate .codex/agents/*.toml and .claude/agents/*.md with --target all --write only when requested. Do not hand-edit generated mirrors."
