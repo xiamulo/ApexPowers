@@ -1,0 +1,16 @@
+{
+  "review": {
+    "required": true,
+    "status": "pending",
+    "attempts": 1,
+    "review_path": "tasks/reviews/apex-ponytail-production.md",
+    "run_id": "019eed46-08f7-7750-bd94-58c32440aa5f"
+  },
+  "version": 1,
+  "slug": "apex-ponytail-production",
+  "todo_path": "tasks/todo+apex-ponytail-production.md",
+  "changed_files": [
+    ".codex/skills/apex-init-project-agent/scripts/init_project_agent.py"
+  ],
+  "updated_at": "2026-06-22T11:37:26+0800"
+}
