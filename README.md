@@ -2,6 +2,8 @@
 
 ApexPowers 是一套私有 Codex / Claude Code skill 包，用来给项目初始化 agent 可读的上下文、规则文档、文件头注释和目录说明。
 
+日常使用建议先看 [`docs/user-guide.md`](docs/user-guide.md)：它按“我现在该用哪个 skill / profile”来解释使用场景，比下面的安装和维护说明更口语化。
+
 当前包含：
 
 - `.codex/skills/apex-init-project-agent`：生成项目根 `AGENTS.md`、`CLAUDE.md` 和 `.claude/rules/*.md`
