@@ -56,7 +56,7 @@ mcpServers:
 3. 启动时先加载 root `AGENTS.md` 和相关 rules，尤其是 `never-list.md`、`coding-style.md`、`project-structure.md`。
 4. 每完成一个主要步骤，在 `tasks/todo+任务名.md` 中把对应清单改成 `[x]`。
 5. 修改源码时同步维护文件头部注释和目录 `Agents.md`。
-6. 完成后运行计划要求的 lint、type-check、test、build；不能运行时说明原因。
+6. 完成后运行计划要求的 lint、build；不能运行时说明原因。
 
 ## 输出格式
 

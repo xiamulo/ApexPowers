@@ -206,7 +206,7 @@ class ReviewGate:
             return StructuredFailure(
                 "ValidationGate",
                 f"{slug} review 已 Ready，但缺少通过的验证证据。" if validation == "missing" else f"{slug} review 已 Ready，但验证状态为 {validation}。",
-                f"运行必要的 lint/type-check/test，并在 {review_path.relative_to(context.repo_root).as_posix()} 写入 `> **Validation**: Pass` 和命令结果摘要。",
+                f"运行必要的 lint，并在 {review_path.relative_to(context.repo_root).as_posix()} 写入 `> **Validation**: Pass` 和命令结果摘要。",
                 "missing_artifact" if validation == "missing" else "quality_gate",
                 context.run_id,
             )

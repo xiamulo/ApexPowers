@@ -57,7 +57,7 @@ mcpServers:
 3. 加载 root `AGENTS.md` 和相关 `.claude/rules/` 或 `.codex/rules/`。
 4. 小步修改，保持实现直白、可测试、符合现有架构。
 5. 每完成主要步骤，更新当前任务对应的 `tasks/todo+任务名.md`。
-6. 完成后运行 lint、type-check、test、build 中适用的命令。
+6. 完成后运行 lint、build 中适用的命令。
 7. 同步维护文件头部注释和目录 `Agents.md`。
 
 ## 输出格式

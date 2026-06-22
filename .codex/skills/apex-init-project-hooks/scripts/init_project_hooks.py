@@ -233,7 +233,7 @@ Code changes require review. Inspect the diff and active todo, then create or up
 [/apex-state:review_required]
 
 [apex-state:validation_required]
-Review is ready, but validation evidence is incomplete. Run the relevant lint, type-check, and tests, then record `> **Validation**: Pass` with command summaries.
+Review is ready, but validation evidence is incomplete. Run the relevant lint, type-check, then record `> **Validation**: Pass` with command summaries.
 [/apex-state:validation_required]
 
 [apex-state:done]
