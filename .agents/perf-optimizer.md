@@ -12,7 +12,6 @@ mcpServers:
   - serena
   - context7
   - grok-search
-  - desktop-commander
 ---
 
 # Performance Optimizer 子智能体

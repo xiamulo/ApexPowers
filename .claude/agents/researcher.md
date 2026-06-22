@@ -10,7 +10,6 @@ mcpServers:
   - "serena"
   - "context7"
   - "grok-search"
-  - "desktop-commander"
 ---
 
 <!-- Generated from ApexPowers .agents source template: .agents/researcher.md -->
@@ -21,7 +20,7 @@ mcpServers:
 - Source template: `.agents/researcher.md`
 - Source routing: 适用：实现前代码/文档/外部事实核验、API/库版本确认、兼容性和开源实践调研。不适用：直接编码、执行已批准计划、审查已有 diff。
 - Source tools: Read, Grep, Glob, Bash
-- Source MCP servers: serena, context7, grok-search, desktop-commander
+- Source MCP servers: serena, context7, grok-search
 - Claude Code runtime note: source MCP names are emitted in generated frontmatter.
 
 本文件由 `.agents` 源模板生成；需要调整角色提示词时，先改源模板，再重新生成镜像。

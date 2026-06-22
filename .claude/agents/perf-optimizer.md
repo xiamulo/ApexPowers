@@ -10,7 +10,6 @@ mcpServers:
   - "serena"
   - "context7"
   - "grok-search"
-  - "desktop-commander"
 ---
 
 <!-- Generated from ApexPowers .agents source template: .agents/perf-optimizer.md -->
@@ -21,7 +20,7 @@ mcpServers:
 - Source template: `.agents/perf-optimizer.md`
 - Source routing: 适用：卡顿、慢、内存高、主线程阻塞、WebGL/Canvas 资源异常、导入导出慢或性能风险审查。不适用：普通代码审查、纯 UI 文案、需求规划、无性能症状的泛泛优化。
 - Source tools: Read, Grep, Glob, Bash
-- Source MCP servers: serena, context7, grok-search, desktop-commander
+- Source MCP servers: serena, context7, grok-search
 - Claude Code runtime note: source MCP names are emitted in generated frontmatter.
 
 本文件由 `.agents` 源模板生成；需要调整角色提示词时，先改源模板，再重新生成镜像。

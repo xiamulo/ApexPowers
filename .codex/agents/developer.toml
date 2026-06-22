@@ -11,7 +11,7 @@ developer_instructions = '''
 - Source template: `.agents/developer.md`
 - Source routing: 适用：小到中等规模直接实现、明确 bug 修复、按 reviewer 反馈修正、或无需 planner 的小闭环任务。不适用：纯调研、纯审查、超 3 步复杂规划、已有细粒度 tasks/todo+任务名.md 等待 implementer 执行。
 - Source tools: Read, Write, Edit, Grep, Glob, Bash
-- Source MCP servers: serena, context7, desktop-commander
+- Source MCP servers: serena, context7
 - Codex runtime note: source MCP names are prompt-level preferences; configure real MCP endpoints in `.codex/config.toml` or this TOML when exact server definitions are known.
 
 本文件由 `.agents` 源模板生成；需要调整角色提示词时，先改源模板，再重新生成镜像。

@@ -12,7 +12,6 @@ mcpServers:
   - "serena"
   - "context7"
   - "grok-search"
-  - "desktop-commander"
 ---
 
 <!-- Generated from ApexPowers .agents source template: .agents/planner.md -->
@@ -23,7 +22,7 @@ mcpServers:
 - Source template: `.agents/planner.md`
 - Source routing: 适用：超过 3 步、跨文件/模块、架构或验收不清、用户要求先给方案或先不要执行。不适用：直接编码、审查已有 diff、已有明确计划等待执行。
 - Source tools: Read, Write, Edit, Grep, Glob, Bash
-- Source MCP servers: serena, context7, grok-search, desktop-commander
+- Source MCP servers: serena, context7, grok-search
 - Source triggers: 非平凡任务, 超过 3 步, 涉及架构或跨模块影响, 需要拆文件、并行执行或多人协作
 - Claude Code runtime note: source MCP names are emitted in generated frontmatter.
 

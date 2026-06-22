@@ -3,72 +3,72 @@ name: apex-to-prd
 description: Apex PRD 合成工作流。用于把已经烤清楚的对话上下文、领域术语和架构决定整理成正式 PRD，并发布到项目 issue tracker。
 ---
 
-This skill takes the current conversation context and codebase understanding and produces a PRD. Do NOT interview the user — just synthesize what you already know.
+此 skill 接收当前对话上下文和对代码库的理解，并产出一份 PRD。不要访谈用户；只综合你已经知道的信息。
 
-The issue tracker and triage label vocabulary should have been provided to you — run `/setup-matt-pocock-skills` if not.
+issue tracker 和 triage label 词汇表应该已经提供给你；如果没有，请运行 `/setup-matt-pocock-skills`。
 
-## Process
+## 流程
 
-1. Explore the repo to understand the current state of the codebase, if you haven't already. Use the project's domain glossary vocabulary throughout the PRD, and respect any ADRs in the area you're touching.
+1. 如果你还没有探索过仓库，请先探索，以理解代码库当前状态。整份 PRD 都应使用项目的领域词汇表，并尊重你所触及区域内的所有 ADR。
 
-2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam possible. If new seams are needed, propose them at the highest point you can.
+2. 勾勒出你准备测试该功能的测试边界（seams）。应优先使用已有边界，而不是创建新边界。尽可能使用最高层级的边界。如果需要新边界，请在你能做到的最高层级提出它们。
 
-Check with the user that these seams match their expectations.
+和用户确认这些测试边界是否符合他们的预期。
 
-3. Write the PRD using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
+3. 使用下面的模板编写 PRD，然后将其发布到项目 issue tracker。应用 `ready-for-agent` triage label；不需要额外 triage。
 
 <prd-template>
 
-## Problem Statement
+## 问题陈述
 
-The problem that the user is facing, from the user's perspective.
+从用户视角描述用户正在面对的问题。
 
-## Solution
+## 解决方案
 
-The solution to the problem, from the user's perspective.
+从用户视角描述该问题的解决方案。
 
-## User Stories
+## 用户故事
 
-A LONG, numbered list of user stories. Each user story should be in the format of:
+一份很长的、带编号的用户故事列表。每条用户故事都应使用以下格式：
 
-1. As an <actor>, I want a <feature>, so that <benefit>
+1. 作为 <actor>，我想要 <feature>，以便 <benefit>
 
 <user-story-example>
-1. As a mobile bank customer, I want to see balance on my accounts, so that I can make better informed decisions about my spending
+1. 作为一名手机银行客户，我想查看我的账户余额，以便我能对自己的支出做出信息更充分的决策
 </user-story-example>
 
-This list of user stories should be extremely extensive and cover all aspects of the feature.
+这份用户故事列表应该极其完整，并覆盖该功能的所有方面。
 
-## Implementation Decisions
+## 实现决策
 
-A list of implementation decisions that were made. This can include:
+列出已经做出的实现决策。可以包括：
 
-- The modules that will be built/modified
-- The interfaces of those modules that will be modified
-- Technical clarifications from the developer
-- Architectural decisions
-- Schema changes
-- API contracts
-- Specific interactions
+- 将要构建或修改的模块
+- 将要修改的这些模块的接口
+- 来自开发者的技术澄清
+- 架构决策
+- Schema 变更
+- API 契约
+- 具体交互
 
-Do NOT include specific file paths or code snippets. They may end up being outdated very quickly.
+不要包含具体文件路径或代码片段。它们最终可能很快过期。
 
-Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it within the relevant decision and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
+例外：如果某个原型产出的片段能比文字更精确地表达决策（状态机、reducer、schema、类型形状），可以把它内联到相关决策中，并简短说明它来自原型。请裁剪到富含决策信息的部分；这里不是工作演示，只保留重要片段。
 
-## Testing Decisions
+## 测试决策
 
-A list of testing decisions that were made. Include:
+列出已经做出的测试决策。包括：
 
-- A description of what makes a good test (only test external behavior, not implementation details)
-- Which modules will be tested
-- Prior art for the tests (i.e. similar types of tests in the codebase)
+- 对什么是好测试的描述（只测试外部行为，不测试实现细节）
+- 将要测试哪些模块
+- 测试先例（即代码库中类似类型的测试）
 
-## Out of Scope
+## 范围之外
 
-A description of the things that are out of scope for this PRD.
+描述不属于此 PRD 范围的事项。
 
-## Further Notes
+## 补充说明
 
-Any further notes about the feature.
+关于该功能的其他任何补充说明。
 
 </prd-template>

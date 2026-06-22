@@ -413,14 +413,14 @@ def check_lean_skill(root: Path) -> Check:
     """Check lean review skill invariants."""
 
     text = read_text(root / ".codex/skills/apex-lean-review/SKILL.md") or ""
-    invariants = (
-        "input validation at trust boundaries",
-        "error handling that prevents data loss",
-        "accessibility",
-        "docs/platform-native-solutions.md",
-        "Apex Lean Review",
+    invariant_groups = (
+        ("input validation at trust boundaries", ("input validation at trust boundaries", "信任边界上的输入校验")),
+        ("error handling that prevents data loss", ("error handling that prevents data loss", "防止数据丢失的错误处理")),
+        ("accessibility", ("accessibility", "可访问性")),
+        ("docs/platform-native-solutions.md", ("docs/platform-native-solutions.md",)),
+        ("Apex Lean Review", ("Apex Lean Review", "Apex 精简审查")),
     )
-    missing = [item for item in invariants if item not in text]
+    missing = [name for name, alternatives in invariant_groups if not any(alternative in text for alternative in alternatives)]
     if missing:
         return Check("lean-review-skill", "fail", f"Lean review skill missing invariants: {', '.join(missing)}", "Restore safety boundaries and platform-native reference.", {"missing": missing})
     return Check("lean-review-skill", "pass", "Lean review skill contains required safety and native-platform invariants.")

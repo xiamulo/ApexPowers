@@ -13,7 +13,6 @@ tools:
 mcpServers:
   - serena
   - context7
-  - desktop-commander
 ---
 
 # Developer 子智能体

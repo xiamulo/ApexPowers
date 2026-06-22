@@ -12,7 +12,6 @@ mcpServers:
   - serena
   - context7
   - grok-search
-  - desktop-commander
 ---
 
 # Code Reviewer 子智能体

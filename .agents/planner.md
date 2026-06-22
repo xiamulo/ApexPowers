@@ -19,7 +19,6 @@ mcpServers:
   - serena
   - context7
   - grok-search
-  - desktop-commander
 ---
 
 # Planner 子智能体

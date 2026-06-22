@@ -1,73 +1,73 @@
 ---
 name: apex-lean-review
-description: Review a diff or module for over-engineering. Finds unnecessary abstractions, dependencies, custom code, and platform-native replacements while preserving safety, validation, accessibility, tests, and explicit requirements.
+description: 审查 diff 或模块是否过度工程化。在保留安全性、校验、可访问性、测试和明确需求的前提下，找出不必要的抽象、依赖、自定义代码以及可由平台原生能力替代的实现。
 ---
 
-# Apex Lean Review
+# Apex 精简审查
 
-Use this skill when the user asks for an over-engineering review, lean review, simplification pass, YAGNI audit, dependency audit, or "what can we delete".
+当用户要求进行过度工程化审查、精简审查、简化检查、YAGNI 审计、依赖审计，或询问“哪些可以删除”时，使用此 skill。
 
-This is a review skill, not an always-on coding mode. Do not change files unless the user separately asks for implementation.
+这是一个审查 skill，不是始终开启的编码模式。除非用户另外要求实现，否则不要修改文件。
 
-## Scope
+## 范围
 
-Review only whether the current diff or target module is larger, more abstract, or more dependency-heavy than the requirement needs. Do not replace the normal code-reviewer for correctness, security, maintainability, or test-quality review.
+只审查当前 diff 或目标模块是否比需求所需更庞大、更抽象或依赖更重。不要替代正常 code-reviewer 对正确性、安全性、可维护性或测试质量的审查。
 
-## Evidence To Gather
+## 需要收集的证据
 
-1. Read the request or active `tasks/todo+*.md`.
-2. Inspect the diff or named files.
-3. Check existing project patterns before recommending a new style.
-4. Consult `docs/platform-native-solutions.md` when available.
-5. Identify whether an installed dependency or standard library already solves the same job.
+1. 阅读用户请求或当前活跃的 `tasks/todo+*.md`。
+2. 检查 diff 或用户点名的文件。
+3. 在推荐新风格前，先检查项目已有模式。
+4. 如果存在 `docs/platform-native-solutions.md`，查阅该文件。
+5. 判断已安装依赖或标准库是否已经解决同一问题。
 
-## Review Ladder
+## 审查阶梯
 
-Stop at the first applicable simplification:
+遇到第一个适用的简化方式就停止向下查找：
 
-1. The behavior is speculative or unused today: delete it.
-2. The language or runtime standard library already covers it: use that.
-3. Browser, CSS, database, or platform-native capability covers it: use that.
-4. An already-installed project dependency is the established local pattern: use it.
-5. The abstraction has one real caller or one implementation: inline it or defer it.
-6. The code is necessary but too large: split only around real responsibilities.
+1. 行为属于 speculative 或当前未使用：删除它。
+2. 语言或运行时标准库已经覆盖该能力：使用标准库。
+3. 浏览器、CSS、数据库或平台原生能力已经覆盖该能力：使用原生能力。
+4. 已安装的项目依赖是本项目既有模式：使用该依赖。
+5. 抽象只有一个真实调用方或一个实现：内联它或推迟抽象。
+6. 代码确实必要但过大：只围绕真实职责进行拆分。
 
-## Never Cut
+## 绝不能删减
 
-Do not simplify away:
+不要为了简化而移除：
 
-- input validation at trust boundaries
-- error handling that prevents data loss
-- security controls
-- accessibility basics
-- user explicitly requested behavior
-- a focused test or self-check for non-trivial logic
-- compatibility behavior that the project already needs
+- 信任边界上的输入校验
+- 防止数据丢失的错误处理
+- 安全控制
+- 基础可访问性
+- 用户明确要求的行为
+- 针对非平凡逻辑的聚焦测试或自检
+- 项目已经需要的兼容性行为
 
-## Output Format
+## 输出格式
 
-Findings first, one per line:
+先列出发现项，每行一条：
 
-`L<line or file>: <tag> <what to cut or shrink>. Replacement: <specific alternative>. Keep if: <condition>.`
+`L<行号或文件>: <标签> <要删除或收缩的内容>. 替代方案: <具体替代方案>. 保留条件: <条件>.`
 
-Allowed tags:
+允许的标签：
 
-- `delete`: dead code, speculative feature, unused path
-- `stdlib`: custom code replaced by standard library
-- `native`: dependency or custom UI replaced by platform-native capability
-- `yagni`: abstraction without a current second use
-- `shrink`: same behavior with fewer moving parts
-- `dependency`: package can be removed or avoided
+- `delete`: 死代码、speculative 功能、未使用路径
+- `stdlib`: 可由标准库替代的自定义代码
+- `native`: 可由平台原生能力替代的依赖或自定义 UI
+- `yagni`: 当前没有第二个用途的抽象
+- `shrink`: 用更少活动部件实现相同行为
+- `dependency`: 可以移除或避免使用的包
 
-End with:
+最后以以下内容结束：
 
-- `Net removable:` estimated files, lines, dependencies, or concepts
-- `Do not cut:` safety or requirement boundaries that must remain
+- `可净移除:` 估算可移除的文件、行数、依赖或概念
+- `不要删减:` 必须保留的安全边界或需求边界
 
-If no findings:
+如果没有发现项：
 
-`Lean already. Ship.`
+`已经足够精简。可以交付。`
 
-## Boundaries
+## 边界
 
-Prefer concrete deletions over taste comments. If the recommendation depends on runtime support, name the compatibility requirement that must be verified.
+优先给出具体可删除项，而不是风格偏好评论。如果建议依赖运行时支持，说明必须验证的兼容性要求。

@@ -11,7 +11,6 @@ tools:
 mcpServers:
   - "serena"
   - "context7"
-  - "desktop-commander"
 ---
 
 <!-- Generated from ApexPowers .agents source template: .agents/implementer.md -->
@@ -22,7 +21,7 @@ mcpServers:
 - Source template: `.agents/implementer.md`
 - Source routing: 适用：已有批准计划、task slug、步骤、文件范围和验证要求。不适用：需求模糊、缺少计划、需要重新设计方案、需要外部调研或代码审查。
 - Source tools: Read, Write, Edit, Grep, Glob, Bash
-- Source MCP servers: serena, context7, desktop-commander
+- Source MCP servers: serena, context7
 - Claude Code runtime note: source MCP names are emitted in generated frontmatter.
 
 本文件由 `.agents` 源模板生成；需要调整角色提示词时，先改源模板，再重新生成镜像。
