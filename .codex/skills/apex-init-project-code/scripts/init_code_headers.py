@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 from pathlib import Path
 
 
@@ -92,31 +91,6 @@ def has_standard_marker(text: str) -> bool:
     return any(marker in top for marker in HEADER_MARKERS)
 
 
-def first_meaningful_line(lines: list[str]) -> str:
-    for line in lines:
-        stripped = line.strip()
-        if stripped:
-            return stripped
-    return ""
-
-
-def has_existing_header_comment(path: Path, text: str) -> bool:
-    lines = text.splitlines()
-    index = 0
-    if lines and lines[0].startswith("#!"):
-        index = 1
-    if path.suffix.lower() == ".py" and len(lines) > index:
-        encoding_re = re.compile(r"^#.*coding[:=]\s*[-\w.]+")
-        if encoding_re.match(lines[index]):
-            index += 1
-    first = first_meaningful_line(lines[index : index + 8])
-    if first.startswith(("//", "/*", "<!--")):
-        return True
-    if path.suffix.lower() in HASH_COMMENT_EXTS and first.startswith("#"):
-        return True
-    return False
-
-
 def iter_files(root: Path, selected: list[str], include_md: bool) -> list[Path]:
     allowed = SUPPORTED_EXTS if include_md else SOURCE_EXTS
     starts = [root / item for item in selected] if selected else [root]
@@ -138,7 +112,7 @@ def iter_files(root: Path, selected: list[str], include_md: bool) -> list[Path]:
 
 
 def is_missing_header(path: Path, text: str) -> bool:
-    return not has_standard_marker(text) and not has_existing_header_comment(path, text)
+    return not has_standard_marker(text)
 
 
 def main() -> int:
