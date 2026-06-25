@@ -1,0 +1,2 @@
+[console_scripts]
+apex = apexpowers_cli.cli:main
