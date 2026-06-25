@@ -3,6 +3,7 @@
 
 name = "researcher"
 description = "代码、文档、库和外部资料研究专家。负责深度调研代码库、调用链、第三方库文档、实现细节和最佳实践。只输出调研结果，不修改代码。 适用：实现前代码/文档/外部事实核验、API/库版本确认、兼容性和开源实践调研。不适用：直接编码、执行已批准计划、审查已有 diff。"
+model = "gpt-5.5"
 model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
 developer_instructions = '''

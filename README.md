@@ -221,8 +221,8 @@ python "$ApexRoot\.codex\skills\apex-init-project-file\scripts\init_agents_md.py
 生成 Codex / Claude Code 官方子智能体镜像：
 
 ```powershell
-python "$ApexRoot\.codex\skills\apex-sync-agent-mirrors\scripts\sync_agent_mirrors.py" "$Target"
-python "$ApexRoot\.codex\skills\apex-sync-agent-mirrors\scripts\sync_agent_mirrors.py" "$Target" --target all --write
+py -3 "$ApexRoot\.codex\skills\apex-sync-agent-mirrors\scripts\sync_agent_mirrors.py" "$Target"
+py -3 "$ApexRoot\.codex\skills\apex-sync-agent-mirrors\scripts\sync_agent_mirrors.py" "$Target" --target all --write
 ```
 
 第一条是 dry run。确认将要生成的 `.codex/agents/*.toml` 和 `.claude/agents/*.md` 合理后，再运行带 `--write` 的命令。
@@ -230,8 +230,8 @@ python "$ApexRoot\.codex\skills\apex-sync-agent-mirrors\scripts\sync_agent_mirro
 只读检查 ApexPowers 安装健康状态：
 
 ```powershell
-python "$ApexRoot\.codex\skills\apex-doctor\scripts\apex_doctor.py" "$Target"
-python "$ApexRoot\.codex\skills\apex-doctor\scripts\apex_doctor.py" "$Target" --json
+py -3 "$ApexRoot\.codex\skills\apex-doctor\scripts\apex_doctor.py" "$Target"
+py -3 "$ApexRoot\.codex\skills\apex-doctor\scripts\apex_doctor.py" "$Target" --json
 ```
 
 `apex-doctor` 不写文件。它会检查 core skills、agent mirrors、hook manifests、host runtime/config、workflow state 和 git status，并给出修复命令。
@@ -242,8 +242,8 @@ python "$ApexRoot\.codex\skills\apex-doctor\scripts\apex_doctor.py" "$Target" --
 $CodexHome = "$env:USERPROFILE\.codex"
 $ClaudeHome = "$env:USERPROFILE\.claude"
 
-python "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py" "$Target"
-python "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py" "$Target" `
+py -3 "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py" "$Target"
+py -3 "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py" "$Target" `
   --codex-home "$CodexHome" `
   --claude-home "$ClaudeHome" `
   --write
@@ -264,17 +264,17 @@ python "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hoo
 安全更新和卸载都走 manifest 边界：
 
 ```powershell
-python "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py" "$Target" `
+py -3 "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py" "$Target" `
   --codex-home "$CodexHome" `
   --claude-home "$ClaudeHome" `
   --update
 
-python "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py" "$Target" `
+py -3 "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py" "$Target" `
   --codex-home "$CodexHome" `
   --claude-home "$ClaudeHome" `
   --uninstall
 
-python "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py" "$Target" `
+py -3 "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py" "$Target" `
   --codex-home "$CodexHome" `
   --claude-home "$ClaudeHome" `
   --uninstall `
@@ -288,7 +288,7 @@ python "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hoo
 如果你明确想使用旧的项目级 hook 布局，可以加 `--hook-scope project`：
 
 ```powershell
-python "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py" "$Target" `
+py -3 "$ApexRoot\.codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py" "$Target" `
   --hook-scope project `
   --write
 ```
@@ -358,7 +358,7 @@ Use apex-to-issues 在 PRD 就绪后拆成可独立实现、可验证、按依�
 修改 Python 脚本后，运行：
 
 ```powershell
-python -m py_compile `
+py -3 -m py_compile `
   .codex\skills\apex-init-project-agent\scripts\init_project_agent.py `
   .codex\skills\apex-init-project-code\scripts\init_code_headers.py `
   .codex\skills\apex-init-project-file\scripts\init_agents_md.py `
@@ -374,15 +374,15 @@ python -m py_compile `
 修改 hook runtime 后，再运行：
 
 ```powershell
-python -m unittest tests.test_apex_loop_hooks tests.test_apex_loop_installer
+py -3 -m unittest tests.test_apex_loop_hooks tests.test_apex_loop_installer
 ```
 
 修改分发层、plugin manifest、commands、benchmark 或跨宿主文档后，再运行：
 
 ```powershell
-python scripts\check_apex_distribution.py --write-sha256-manifest
-python scripts\check_apex_distribution.py --json
-python -m unittest tests.test_apex_distribution
+py -3 scripts\check_apex_distribution.py --write-sha256-manifest
+py -3 scripts\check_apex_distribution.py --json
+py -3 -m unittest tests.test_apex_distribution
 python benchmarks\apex_distribution_benchmark.py --runs 1 --json
 ```
 

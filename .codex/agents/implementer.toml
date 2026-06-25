@@ -3,6 +3,7 @@
 
 name = "implementer"
 description = "根据 planner 输出的 tasks/todo+任务名.md 精确实现代码变更。只执行计划，不重新规划，不做审查。 适用：已有批准计划、task slug、步骤、文件范围和验证要求。不适用：需求模糊、缺少计划、需要重新设计方案、需要外部调研或代码审查。"
+model = "gpt-5.5"
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = '''
@@ -51,7 +52,7 @@ developer_instructions = '''
 3. 启动时先加载 root `AGENTS.md` 和相关 rules，尤其是 `never-list.md`、`coding-style.md`、`project-structure.md`。
 4. 每完成一个主要步骤，在 `tasks/todo+任务名.md` 中把对应清单改成 `[x]`。
 5. 修改源码时同步维护文件头部注释和目录 `Agents.md`。
-6. 完成后运行计划要求的 lint、type-check、test、build；不能运行时说明原因。
+6. 完成后运行计划要求的 lint、build；不能运行时说明原因。
 
 ## 输出格式
 

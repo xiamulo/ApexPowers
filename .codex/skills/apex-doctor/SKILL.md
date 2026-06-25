@@ -18,14 +18,14 @@ ApexPowers checkout 自身的分发一致性检查由 `scripts/check_apex_distri
 ```powershell
 $CodexHome = "$env:USERPROFILE\.codex"
 $ClaudeHome = "$env:USERPROFILE\.claude"
-python .codex\skills\apex-doctor\scripts\apex_doctor.py .
-python .codex\skills\apex-doctor\scripts\apex_doctor.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --json
+py -3 .codex\skills\apex-doctor\scripts\apex_doctor.py .
+py -3 .codex\skills\apex-doctor\scripts\apex_doctor.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --json
 ```
 
 维护 ApexPowers 仓库本身时再单独运行：
 
 ```powershell
-python scripts\check_apex_distribution.py --json
+py -3 scripts\check_apex_distribution.py --json
 ```
 
 ## 状态语义

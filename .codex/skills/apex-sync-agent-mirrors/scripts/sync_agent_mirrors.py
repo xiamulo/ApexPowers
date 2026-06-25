@@ -11,6 +11,7 @@ from typing import Iterable
 
 
 GENERATED_MARKER = "Generated from ApexPowers .agents source template"
+CODEX_MODEL = "gpt-5.5"
 READ_ONLY_AGENT_NAMES = {"researcher", "code-reviewer", "perf-optimizer"}
 HIGH_REASONING_AGENT_NAMES = {"planner", "code-reviewer"}
 SOURCE_META_SECTION = "## 路径与 Schema 兼容说明（追加）"
@@ -282,6 +283,7 @@ def render_codex(template: AgentTemplate, root: Path, output_dir: Path) -> Rende
             "",
             f"name = {toml_string(template.name)}",
             f"description = {toml_string(combined_description(template))}",
+            f"model = {toml_string(CODEX_MODEL)}",
             f'model_reasoning_effort = "{reasoning_effort(template)}"',
             f'sandbox_mode = "{sandbox_mode(template)}"',
             f"developer_instructions = {toml_multiline_literal(instructions)}",

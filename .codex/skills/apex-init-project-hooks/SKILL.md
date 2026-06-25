@@ -25,15 +25,15 @@ Hook 配置和 runtime 默认安装到对应 agent 根目录：Codex 使用 `COD
 ```powershell
 $CodexHome = "$env:USERPROFILE\.codex"
 $ClaudeHome = "$env:USERPROFILE\.claude"
-python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py .
-python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --write
-python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --write --force
-python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --update
-python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --uninstall
-python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --uninstall --write
-python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --hook-scope project --write
-python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --codex-config-format json --write
-python .codex\skills\apex-init-project-hooks\scripts\apex_loop.py render-config codex --script-path "$CodexHome/hooks/apex_loop.py" --config-format toml
+py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py .
+py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --write
+py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --write --force
+py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --update
+py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --uninstall
+py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --uninstall --write
+py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --hook-scope project --write
+py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --codex-home "$CodexHome" --claude-home "$ClaudeHome" --codex-config-format json --write
+py -3 .codex\skills\apex-init-project-hooks\scripts\apex_loop.py render-config codex --script-path "$CodexHome/hooks/apex_loop.py" --config-format toml
 ```
 
 ## 覆盖规则
@@ -78,7 +78,7 @@ python .codex\skills\apex-init-project-hooks\scripts\apex_loop.py render-config 
 修改脚本后至少运行：
 
 ```powershell
-python -m py_compile .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py .codex\skills\apex-init-project-hooks\scripts\apex_loop.py .codex\skills\apex-init-project-hooks\scripts\apex_loop_core.py .codex\skills\apex-init-project-hooks\scripts\apex_loop_routes.py .codex\skills\apex-init-project-hooks\scripts\apex_loop_runtime.py .codex\skills\apex-init-project-hooks\scripts\apex_loop_utils.py
-python -m unittest tests.test_apex_loop_hooks tests.test_apex_loop_installer
-python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --json
+py -3 -m py_compile .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py .codex\skills\apex-init-project-hooks\scripts\apex_loop.py .codex\skills\apex-init-project-hooks\scripts\apex_loop_core.py .codex\skills\apex-init-project-hooks\scripts\apex_loop_routes.py .codex\skills\apex-init-project-hooks\scripts\apex_loop_runtime.py .codex\skills\apex-init-project-hooks\scripts\apex_loop_utils.py
+py -3 -m unittest tests.test_apex_loop_hooks tests.test_apex_loop_installer
+py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py . --json
 ```

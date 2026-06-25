@@ -2,15 +2,25 @@
   "review": {
     "required": true,
     "status": "pending",
-    "attempts": 1,
+    "attempts": 2,
     "review_path": "tasks/reviews/apex-ponytail-production.md",
-    "run_id": "019eed46-08f7-7750-bd94-58c32440aa5f"
+    "run_id": "019efc4d-4036-7bd2-a1fc-33e7948a285f"
   },
   "version": 1,
   "slug": "apex-ponytail-production",
   "todo_path": "tasks/todo+apex-ponytail-production.md",
   "changed_files": [
-    ".codex/skills/apex-init-project-agent/scripts/init_project_agent.py"
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_routes.py",
+    ".codex/skills/apex-sync-agent-mirrors/scripts/sync_agent_mirrors.py",
+    "tests/test_apex_loop_hooks.py",
+    "tests/test_apex_loop_installer.py"
   ],
-  "updated_at": "2026-06-22T11:37:26+0800"
+  "updated_at": "2026-06-25T09:06:38+0800",
+  "phase": "review_required",
+  "changed_file_hashes": {
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_routes.py": "sha256:17eda81dbec6e55082ed4675a7489384df3eb4233812658632a8f3ac7782a444",
+    ".codex/skills/apex-sync-agent-mirrors/scripts/sync_agent_mirrors.py": "sha256:f7bac37df05c55cdb64c3125bb79b3caff957b37fefac4b625e4e781d7678d4b",
+    "tests/test_apex_loop_hooks.py": "sha256:7f7c093f7e7159fd0e231eec6419d00ea0f12849cb772e9bb9b2a7da1db60781",
+    "tests/test_apex_loop_installer.py": "sha256:5b08521671a98e14d56706486b24440195987ff3549f3ad510a2ef282aeb217e"
+  }
 }

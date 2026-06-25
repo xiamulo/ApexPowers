@@ -6,17 +6,17 @@ instructions: |
 
   Always run the installer in dry-run mode first:
 
-    python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root>
+    py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root>
 
   Only write after the target list is reasonable:
 
-    python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root> --codex-home "$env:USERPROFILE\.codex" --claude-home "$env:USERPROFILE\.claude" --write
+    py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root> --codex-home "$env:USERPROFILE\.codex" --claude-home "$env:USERPROFILE\.claude" --write
 
   Use manifest-aware update or uninstall when refreshing or removing hook installations:
 
-    python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root> --codex-home "$env:USERPROFILE\.codex" --claude-home "$env:USERPROFILE\.claude" --update
-    python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root> --codex-home "$env:USERPROFILE\.codex" --claude-home "$env:USERPROFILE\.claude" --uninstall
-    python .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root> --codex-home "$env:USERPROFILE\.codex" --claude-home "$env:USERPROFILE\.claude" --uninstall --write
+    py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root> --codex-home "$env:USERPROFILE\.codex" --claude-home "$env:USERPROFILE\.claude" --update
+    py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root> --codex-home "$env:USERPROFILE\.codex" --claude-home "$env:USERPROFILE\.claude" --uninstall
+    py -3 .codex\skills\apex-init-project-hooks\scripts\init_project_hooks.py <project-root> --codex-home "$env:USERPROFILE\.codex" --claude-home "$env:USERPROFILE\.claude" --uninstall --write
 
   Merge <codex-home>/hooks.json and <claude-home>/settings.json by preserving existing user hooks and replacing only Apex-managed apex_loop.py entries.
   Repeated installs must remain idempotent: do not duplicate Apex hook entries.

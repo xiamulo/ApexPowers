@@ -3,6 +3,7 @@
 
 name = "code-reviewer"
 description = "代码审查专家。严格审查质量、安全、可维护性、性能和项目规则一致性。只报告问题，不修改代码。 适用：实现完成后、提交前、用户要求 review/audit、验证失败后判断风险、审查 branch/staged/commit/file。不适用：直接修复、规划未开始任务、纯外部资料调研。"
+model = "gpt-5.5"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = '''

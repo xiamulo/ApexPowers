@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / ".codex" / "skills" / "apex-init-project-hooks" / "scripts" / "apex_loop.py"
+PYTHON_LAUNCHER = "py -3" if os.name == "nt" else "python3"
 
 
 class ApexLoopHookTests(unittest.TestCase):
@@ -64,6 +66,8 @@ class ApexLoopHookTests(unittest.TestCase):
         self.assertIn("PreToolUse", config["hooks"])
         self.assertIn("PostToolUse", config["hooks"])
         self.assertIn("Stop", config["hooks"])
+        command = config["hooks"]["SessionStart"][0]["hooks"][0]["command"]
+        self.assertTrue(command.startswith(f'{PYTHON_LAUNCHER} ".codex/hooks/apex_loop.py"'), command)
 
     def test_render_codex_toml_config_contains_stable_routes(self) -> None:
         """Codex TOML config is rendered from the route registry."""
@@ -94,6 +98,8 @@ class ApexLoopHookTests(unittest.TestCase):
         self.assertIn("[[hooks.PostToolUse]]", result.stdout)
         self.assertIn("[[hooks.Stop]]", result.stdout)
         self.assertIn('--host codex --route ', result.stdout)
+        self.assertIn(f'command = "{PYTHON_LAUNCHER} \\".codex/hooks/apex_loop.py\\"', result.stdout)
+        self.assertNotIn('command = "python \\".codex/hooks/apex_loop.py\\"', result.stdout)
 
     def test_user_prompt_submit_is_advisory(self) -> None:
         """Prompt route hints must never block."""

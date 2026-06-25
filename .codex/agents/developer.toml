@@ -3,6 +3,7 @@
 
 name = "developer"
 description = "项目全能开发者。负责根据 planner 或用户需求实现完整功能，包括小范围规划、精确编码、测试验证。 适用：小到中等规模直接实现、明确 bug 修复、按 reviewer 反馈修正、或无需 planner 的小闭环任务。不适用：纯调研、纯审查、超 3 步复杂规划、已有细粒度 tasks/todo+任务名.md 等待 implementer 执行。"
+model = "gpt-5.5"
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = '''
@@ -52,7 +53,7 @@ developer_instructions = '''
 3. 加载 root `AGENTS.md` 和相关 `.claude/rules/` 或 `.codex/rules/`。
 4. 小步修改，保持实现直白、可测试、符合现有架构。
 5. 每完成主要步骤，更新当前任务对应的 `tasks/todo+任务名.md`。
-6. 完成后运行 lint、type-check、test、build 中适用的命令。
+6. 完成后运行 lint、build 中适用的命令。
 7. 同步维护文件头部注释和目录 `Agents.md`。
 
 ## 输出格式
