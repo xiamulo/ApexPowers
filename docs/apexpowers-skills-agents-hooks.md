@@ -20,8 +20,8 @@ ApexPowers 不是传统 Web app 或后台服务，而是一套私有的 Codex / 
 第一层是项目初始化：
 
 - 为目标项目生成根规则入口：`AGENTS.md`、`CLAUDE.md`、`.claude/rules/*.md`。
-- 为源码补齐标准头部说明：`@purpose`、`@deps`、`@exports`、`@location`、`@rules`。
-- 为目录补齐轻量 `Agents.md`，让 agent 进入任意目录时能快速知道职责边界。
+- 为源码补齐标准头部说明：`@purpose`、`@scope`、`@deps`、`@exports`、`@invariants`。
+- 为目录补齐轻量 `FOLDER.md`，让 agent 进入任意目录时能快速知道职责边界。
 
 第二层是 agent 协作：
 
@@ -80,7 +80,7 @@ ApexPowers 不是传统 Web app 或后台服务，而是一套私有的 Codex / 
 | `apex-session-init-codex` | `.codex/skills/apex-session-init-codex/SKILL.md` | Codex 会话刚开始、或用户要求开工初始化时。 | 先读目标项目 `AGENTS.md`，有 `CLAUDE.md` 时也读，确认规则后继续当前任务。 |
 | `apex-init-project-agent` | `.codex/skills/apex-init-project-agent/SKILL.md` | 要给已有项目初始化根协作规则时。 | 脚本只写固定 `AGENTS.md` / `CLAUDE.md` 骨架并列出 `.claude/rules` 目标；rules 正文必须由 agent 读真实源码后生成。 |
 | `apex-init-project-code` | `.codex/skills/apex-init-project-code/SKILL.md` | 要扫描并补齐源码文件头部注释时。 | `init_code_headers.py` 只发现候选文件，不负责生成注释内容。 |
-| `apex-init-project-file` | `.codex/skills/apex-init-project-file/SKILL.md` | 要补齐目录级 `Agents.md` 时。 | `init_agents_md.py` 只列候选目录；每个目录说明由 agent 根据真实上下文写，且应保持极简。 |
+| `apex-init-project-file` | `.codex/skills/apex-init-project-file/SKILL.md` | 要补齐目录级 `FOLDER.md` 时。 | `init_agents_md.py` 只列候选目录；每个目录说明由 agent 根据真实上下文写，且应保持极简。 |
 | `apex-sync-agent-mirrors` | `.codex/skills/apex-sync-agent-mirrors/SKILL.md` | 修改 `.agents/*.md` 后，或需要生成官方 Codex / Claude 子智能体镜像时。 | `.agents` 是唯一源；生成 `.codex/agents/*.toml` 和 `.claude/agents/*.md`。已有非生成文件默认跳过。 |
 | `apex-init-project-hooks` | `.codex/skills/apex-init-project-hooks/SKILL.md` | 要为目标项目安装 Codex / Claude Code loop hooks 时。 | 默认 dry-run；`--write` 才安装。默认把 host config/runtime 写入 agent root，项目内只放 loop 状态。 |
 | `apex-doctor` | `.codex/skills/apex-doctor/SKILL.md` | 安装后验收、排查 hooks / agent mirrors / workflow state 时。 | 只读检查目标项目，不修改文件；不要用它替代 ApexPowers 源仓库分发检查。 |
@@ -249,7 +249,7 @@ python .codex\skills\apex-init-project-code\scripts\init_code_headers.py <target
 python .codex\skills\apex-init-project-file\scripts\init_agents_md.py <target> --dry-run
 ```
 
-这两类脚本主要列候选清单。真正注释和 `Agents.md` 内容必须基于真实代码生成。
+这两类脚本主要列候选清单。真正注释和 `FOLDER.md` 内容必须基于真实代码生成。
 
 ### 5. 生成子智能体镜像
 
@@ -452,7 +452,7 @@ Review 文件的完成合约是硬边界：
 | 开工读规则 | `apex-session-init-codex` / `apex-session-init-claude-code` | “开始做这个项目”“先读规则”“apex-session-init”。 |
 | 新项目接入 ApexPowers | `apex-init-project-agent` | “初始化 AGENTS.md / CLAUDE.md / rules”。 |
 | 补源码头注释 | `apex-init-project-code` | “扫描代码文件头部注释”“补 @purpose”。 |
-| 补目录说明 | `apex-init-project-file` | “给目录生成 Agents.md”。 |
+| 补目录说明 | `apex-init-project-file` | “给目录生成 FOLDER.md”。 |
 | 维护子智能体 | `apex-sync-agent-mirrors` | “刷新/生成 Codex 和 Claude 子智能体镜像”。 |
 | 安装 guardrail | `apex-init-project-hooks` | “安装 loop hooks”“给项目启用 hook 门禁”。 |
 | 安装后排障 | `apex-doctor` | “检查 ApexPowers 安装健康”“hooks 不生效”“agent mirror 是否漂移”。 |

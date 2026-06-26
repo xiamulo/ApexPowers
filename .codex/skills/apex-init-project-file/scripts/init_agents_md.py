@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""List project folders that should receive Agents.md attention."""
+"""List project folders that should receive FOLDER.md attention."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ SKIP_DIRS = {
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="List folders needing Agents.md work.")
+    parser = argparse.ArgumentParser(description="List folders needing FOLDER.md work.")
     parser.add_argument(
         "root",
         nargs="?",
@@ -55,13 +55,13 @@ def parse_args() -> argparse.Namespace:
         "--regenerate",
         action="store_true",
         dest="include_existing",
-        help="List all eligible folders, including folders that already have Agents.md.",
+        help="List all eligible folders, including folders that already have FOLDER.md.",
     )
     return parser.parse_args()
 
 
-def has_agents_file(directory: Path) -> bool:
-    return any(child.is_file() and child.name.lower() == "agents.md" for child in directory.iterdir())
+def has_folder_file(directory: Path) -> bool:
+    return any(child.is_file() and child.name.lower() == "folder.md" for child in directory.iterdir())
 
 
 def iter_target_dirs(root: Path, include_existing: bool) -> list[Path]:
@@ -71,7 +71,7 @@ def iter_target_dirs(root: Path, include_existing: bool) -> list[Path]:
         current_path = Path(current)
         if current_path == root:
             continue
-        if include_existing or not has_agents_file(current_path):
+        if include_existing or not has_folder_file(current_path):
             targets.append(current_path)
     return sorted(targets, key=lambda item: item.relative_to(root).as_posix().lower())
 
@@ -96,9 +96,9 @@ def main() -> int:
         for path in targets:
             print(path.relative_to(root).as_posix())
         if args.include_existing:
-            print(f"Summary: {len(targets)} folders selected for Agents.md regeneration.")
+            print(f"Summary: {len(targets)} folders selected for FOLDER.md regeneration.")
         else:
-            print(f"Summary: {len(targets)} folders missing Agents.md.")
+            print(f"Summary: {len(targets)} folders missing FOLDER.md.")
     return 0
 
 

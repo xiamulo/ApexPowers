@@ -1,6 +1,6 @@
 ---
 name: apex-init-project-code
-description: "Core profile wrapper. Discover source files that need standard @purpose/@deps/@exports/@location/@rules headers."
+description: "Core profile wrapper. Discover source files that need standard @purpose/@scope/@deps/@exports/@invariants headers."
 ---
 
 # Apex Init Project Code

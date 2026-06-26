@@ -1,8 +1,8 @@
 {
   "review": {
     "required": true,
-    "status": "pending",
-    "attempts": 3,
+    "status": "ready",
+    "attempts": 4,
     "review_path": "tasks/reviews/apex-ponytail-production.md",
     "run_id": "019efe21-1b4e-7813-bd1d-a7aa0ea35fe2"
   },
@@ -10,13 +10,25 @@
   "slug": "apex-ponytail-production",
   "todo_path": "tasks/todo+apex-ponytail-production.md",
   "changed_files": [
-    ".codex/skills/apex-init-project-code/scripts/init_code_headers.py",
-    "tests/test_init_code_headers.py"
+    ".codex-plugin/profiles/core/skills/apex-init-project-code/SKILL.md",
+    ".codex/skills/apex-init-project-code/SKILL.md",
+    ".codex/skills/apex-init-project-file/SKILL.md",
+    ".codex/skills/apex-init-project-file/agents/openai.yaml",
+    ".codex/skills/apex-init-project-file/scripts/init_agents_md.py",
+    "docs/apexpowers-inventory.md",
+    "docs/apexpowers-skills-agents-hooks.md",
+    "tests/test_init_agents_md.py"
   ],
-  "updated_at": "2026-06-25T17:41:41+0800",
-  "phase": "review_required",
+  "updated_at": "2026-06-26T09:25:00+0800",
+  "phase": "validation_passed",
   "changed_file_hashes": {
-    ".codex/skills/apex-init-project-code/scripts/init_code_headers.py": "sha256:3dbca517e2c6da7274a19c3bca458fae9625f20d35eecab9b8859f33a68c0ff4",
-    "tests/test_init_code_headers.py": "sha256:fbbdb51d1f6f0b730f0b5ba5715f27a89f73dc13a88a951b57901e0ed88d6511"
+    ".codex-plugin/profiles/core/skills/apex-init-project-code/SKILL.md": "sha256:ed516f3943ac048e0eb2e60e70ac307377bf2636b7b896535469e9ff26a31f42",
+    ".codex/skills/apex-init-project-code/SKILL.md": "sha256:712957e42574605375a681ff1da2d7a2fc7ae7a4d2bfed3ca3eab762bd281690",
+    ".codex/skills/apex-init-project-file/SKILL.md": "sha256:9713e10e315cd250b7064bef1d50c240f52a43a992266072754cb44b6bd5b9fa",
+    ".codex/skills/apex-init-project-file/agents/openai.yaml": "sha256:50d0c368eff78e8e0c14c4daf5d0f4edebac3da49c6f4f6add7e0489735895c8",
+    ".codex/skills/apex-init-project-file/scripts/init_agents_md.py": "sha256:baa1dc08bc539ca46d865f7d12217be7b538ec80581694d80965b34f550a0220",
+    "docs/apexpowers-inventory.md": "sha256:e857afbfb6dc65717d803d5f2bcd570b45cfd91fcd03f0f5aea577c0a4cf32cd",
+    "docs/apexpowers-skills-agents-hooks.md": "sha256:a07303ee7f2f1e8da71dd83efc561c96dd7d0b07d0abe4f63cd27544a1c81876",
+    "tests/test_init_agents_md.py": "sha256:fda228f271a2c425f16f75bae18ae8f883681565522306ced7176dc8e31a7bae"
   }
 }

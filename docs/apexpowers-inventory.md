@@ -20,8 +20,8 @@
 | `.codex/skills/apex-session-init-codex/SKILL.md` | Codex 开工初始化。先读目标项目 `AGENTS.md`，再读 `CLAUDE.md`，确认规则后继续当前任务。 |
 | `.claude/skills/apex-session-init-claude-code/SKILL.md` | Claude Code 开工初始化。先读 `CLAUDE.md`，再读 `AGENTS.md`，确保 Claude 侧也遵守项目规则。 |
 | `.codex/skills/apex-init-project-agent/SKILL.md` | 初始化目标项目根规则。脚本写固定 `AGENTS.md` / `CLAUDE.md` 骨架，并列出 `.claude/rules/*.md` 目标；rules 正文必须由 agent 读真实源码后生成。 |
-| `.codex/skills/apex-init-project-code/SKILL.md` | 扫描缺少标准头部注释的源码文件。最终 `@purpose/@deps/@exports/@location/@rules` 由 agent 根据真实代码写入。 |
-| `.codex/skills/apex-init-project-file/SKILL.md` | 扫描缺少目录级 `Agents.md` 的文件夹。每个目录说明控制在极简范围，用来给 agent 快速定位目录职责。 |
+| `.codex/skills/apex-init-project-code/SKILL.md` | 扫描缺少标准头部注释的源码文件。最终 `@purpose/@scope/@deps/@exports/@invariants` 由 agent 根据真实代码写入。 |
+| `.codex/skills/apex-init-project-file/SKILL.md` | 扫描缺少目录级 `FOLDER.md` 的文件夹。每个目录说明控制在极简范围，用来给 agent 快速定位目录职责。 |
 | `.codex/skills/apex-sync-agent-mirrors/SKILL.md` | 从 `.agents/*.md` 源模板生成官方 Codex `.toml` 和 Claude Code `.md` 子智能体镜像。 |
 | `.codex/skills/apex-init-project-hooks/SKILL.md` | 安装 Apex loop hooks。默认把 host 配置和 runtime 放进 Codex / Claude agent root，把 loop 状态留在目标项目。 |
 | `.codex/skills/apex-doctor/SKILL.md` | 只读健康检查入口。检查 core skills、agent mirrors、hook manifests、runtime/config、workflow state 和 git status。 |
@@ -76,7 +76,7 @@
 | --- | --- |
 | `init_project_agent.py` | 写固定根 `AGENTS.md` / `CLAUDE.md`，创建 `.claude/rules` 目录，并输出需要 agent 生成的 rules 文件清单。 |
 | `init_code_headers.py` | 扫描支持的源码文件，列出缺少标准头部注释的目标；默认不替用户写内容。 |
-| `init_agents_md.py` | 扫描目标项目目录，列出缺少 `Agents.md` 的目录；默认只列缺失目录。 |
+| `init_agents_md.py` | 扫描目标项目目录，列出缺少 `FOLDER.md` 的目录；默认只列缺失目录。 |
 | `sync_agent_mirrors.py` | 解析 `.agents` frontmatter 和正文，渲染 Codex TOML / Claude Markdown 镜像；有生成标记才自动覆盖。 |
 | `init_project_hooks.py` | 规划、安装、更新和卸载 hook runtime、host JSON、manifest、loop 状态目录；保护用户已有 hook。 |
 | `apex_loop.py` | hook runtime 命令入口。把当前目录加入 `sys.path` 后调用核心 dispatcher。 |
