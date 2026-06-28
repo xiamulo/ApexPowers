@@ -14,12 +14,16 @@ An active todo exists, but implementation evidence is still thin. Clarify scope,
 Implementation is in progress. Keep changes scoped to the active todo, preserve existing user edits, and update loop state as evidence changes.
 [/apex-state:implementing]
 
+[apex-state:security_required]
+A completed tool produced secret-like content. Remove the content, rotate any real credential, and verify cleanup before attempting completion.
+[/apex-state:security_required]
+
 [apex-state:review_required]
 Code changes require review. Inspect the diff and active todo, then create or update `tasks/reviews/<slug>.md` with review status.
 [/apex-state:review_required]
 
 [apex-state:validation_required]
-Review is ready, but validation evidence is incomplete. Run the relevant lint, type-check, then record `> **Validation**: Pass` with command summaries.
+Review is ready, but validation evidence is incomplete. Run the relevant checks, then set review frontmatter `validation` to `pass` or `automated-pass` and record required check exit codes.
 [/apex-state:validation_required]
 
 [apex-state:done]

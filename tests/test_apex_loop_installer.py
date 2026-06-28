@@ -44,7 +44,7 @@ class ApexLoopInstallerTests(unittest.TestCase):
             *extra,
         ]
 
-    def run_installer(self, command: list[str]) -> subprocess.CompletedProcess[str]:
+    def run_installer(self, command: list[str], env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
         """Run installer and capture output."""
 
         return subprocess.run(
@@ -55,6 +55,7 @@ class ApexLoopInstallerTests(unittest.TestCase):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=False,
+            env=env,
         )
 
     def test_dry_run_outputs_agent_scope_json(self) -> None:
@@ -82,6 +83,24 @@ class ApexLoopInstallerTests(unittest.TestCase):
         self.assertIn(cwd / "tasks" / "loops" / "workflow.md", planned_paths)
         self.assertIn(cwd / "tasks" / "loops" / ".apex-manifest.json", planned_paths)
         self.assertIn(codex_home / "apex" / "manifest.json", planned_paths)
+
+    def test_agent_home_environment_default_is_portable(self) -> None:
+        """AGENT_HOME can select an isolated agent root without hard-coded user paths."""
+
+        with tempfile.TemporaryDirectory() as raw:
+            cwd = Path(raw)
+            self.init_repo(cwd)
+            agent_home = cwd / "shared-agent-home"
+            env = {**os.environ, "AGENT_HOME": str(agent_home)}
+            env.pop("CODEX_HOME", None)
+            env.pop("CLAUDE_HOME", None)
+
+            result = self.run_installer([sys.executable, str(INSTALLER), str(cwd), "--json"], env=env)
+            payload = json.loads(result.stdout)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(Path(payload["codex_home"]), agent_home.resolve())
+        self.assertEqual(Path(payload["claude_home"]), agent_home.resolve())
 
     def test_agent_scope_can_write_legacy_codex_hooks_json(self) -> None:
         """Explicit JSON mode remains available for older Codex installs."""
@@ -251,7 +270,7 @@ class ApexLoopInstallerTests(unittest.TestCase):
 
         self.assertEqual(first.returncode, 0, first.stderr)
         self.assertEqual(second.returncode, 0, second.stderr)
-        self.assertEqual(config_text.count("apex_loop.py"), 7)
+        self.assertEqual(config_text.count("apex_loop.py"), 11)
         self.assertEqual(config_text.count("# >>> apex-managed-hooks-begin"), 1)
 
     def test_update_alias_reports_operation_and_keeps_manifest_idempotent(self) -> None:
@@ -425,7 +444,7 @@ class ApexLoopInstallerTests(unittest.TestCase):
         self.assertFalse(project_claude_config_exists)
         self.assertFalse(project_codex_runtime_exists)
         self.assertFalse(project_claude_runtime_exists)
-        self.assertEqual(agent_config_text.count("apex_loop.py"), 7)
+        self.assertEqual(agent_config_text.count("apex_loop.py"), 11)
         self.assertEqual(legacy_actions[".codex/hooks.json"], "remove-legacy")
         self.assertEqual(legacy_actions[".claude/settings.json"], "remove-legacy")
 

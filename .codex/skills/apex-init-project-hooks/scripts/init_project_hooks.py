@@ -162,6 +162,18 @@ def default_agent_home(env_name: str, dirname: str) -> Path:
     return value.expanduser().resolve()
 
 
+def get_agent_home(host: str) -> Path:
+    """Resolve the default agent home for a host without hard-coded user paths."""
+
+    if os.environ.get("AGENT_HOME"):
+        return Path(os.environ["AGENT_HOME"]).expanduser().resolve()
+    if host == "codex":
+        return default_agent_home("CODEX_HOME", ".codex")
+    if host == "claude":
+        return default_agent_home("CLAUDE_HOME", ".claude")
+    raise ValueError(f"Unsupported host: {host}")
+
+
 def resolve_base(path_value: str | None, fallback: Path) -> Path:
     """Resolve an optional root path."""
 
@@ -228,12 +240,16 @@ An active todo exists, but implementation evidence is still thin. Clarify scope,
 Implementation is in progress. Keep changes scoped to the active todo, preserve existing user edits, and update loop state as evidence changes.
 [/apex-state:implementing]
 
+[apex-state:security_required]
+A completed tool produced secret-like content. Remove the content, rotate any real credential, and verify cleanup before attempting completion.
+[/apex-state:security_required]
+
 [apex-state:review_required]
 Code changes require review. Inspect the diff and active todo, then create or update `tasks/reviews/<slug>.md` with review status.
 [/apex-state:review_required]
 
 [apex-state:validation_required]
-Review is ready, but validation evidence is incomplete. Run the relevant lint, type-check, then record `> **Validation**: Pass` with command summaries.
+Review is ready, but validation evidence is incomplete. Run the relevant checks, then set review frontmatter `validation` to `pass` or `automated-pass` and record required check exit codes.
 [/apex-state:validation_required]
 
 [apex-state:done]
@@ -960,8 +976,8 @@ def main() -> int:
     if not root.is_dir():
         raise SystemExit(f"Project root is not a directory: {root}")
 
-    codex_home = resolve_base(args.codex_home, default_agent_home("CODEX_HOME", ".codex"))
-    claude_home = resolve_base(args.claude_home, default_agent_home("CLAUDE_HOME", ".claude"))
+    codex_home = resolve_base(args.codex_home, get_agent_home("codex"))
+    claude_home = resolve_base(args.claude_home, get_agent_home("claude"))
     codex_config_format = resolve_codex_config_format(codex_home, args.hook_scope, args.codex_config_format)
     operation = "uninstall" if args.uninstall else "update" if args.update else "install"
     if args.uninstall:

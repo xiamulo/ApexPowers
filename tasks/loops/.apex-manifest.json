@@ -4,11 +4,11 @@
   "hook_scope": "agent",
   "codex_config_format": "toml",
   "project_root": "D:/gitdown/ApexPowers",
-  "codex_home": "C:/Users/ADMIN/.codex",
-  "claude_home": "C:/Users/ADMIN/.claude",
+  "codex_home": "C:/Users/gin_n/.codex",
+  "claude_home": "C:/Users/gin_n/.claude",
   "files": [
     {
-      "path": "C:/Users/ADMIN/.claude/hooks/apex_loop.py",
+      "path": "C:/Users/gin_n/.claude/hooks/apex_loop.py",
       "root": "claude",
       "relative_path": "hooks/apex_loop.py",
       "kind": "runtime",
@@ -16,7 +16,7 @@
       "protected": false
     },
     {
-      "path": "C:/Users/ADMIN/.claude/hooks/apex_loop_core.py",
+      "path": "C:/Users/gin_n/.claude/hooks/apex_loop_core.py",
       "root": "claude",
       "relative_path": "hooks/apex_loop_core.py",
       "kind": "runtime",
@@ -24,47 +24,47 @@
       "protected": false
     },
     {
-      "path": "C:/Users/ADMIN/.claude/hooks/apex_loop_routes.py",
+      "path": "C:/Users/gin_n/.claude/hooks/apex_loop_routes.py",
       "root": "claude",
       "relative_path": "hooks/apex_loop_routes.py",
       "kind": "runtime",
-      "hash": "17eda81dbec6e55082ed4675a7489384df3eb4233812658632a8f3ac7782a444",
+      "hash": "dcf7ece68aaffbb75d2500f0d97c40978b3eff69e0e4cd653ef06827f21c67d0",
       "protected": false
     },
     {
-      "path": "C:/Users/ADMIN/.claude/hooks/apex_loop_runtime.py",
+      "path": "C:/Users/gin_n/.claude/hooks/apex_loop_runtime.py",
       "root": "claude",
       "relative_path": "hooks/apex_loop_runtime.py",
       "kind": "runtime",
-      "hash": "f7218446e6043fed5749dc92b2a7395b750ef8ae2da264551e13997215852d50",
+      "hash": "4138b1b4b9ef29c297ac582fe3b56ba2b94e8bf52b2497cc8879d1cc51385803",
       "protected": false
     },
     {
-      "path": "C:/Users/ADMIN/.claude/hooks/apex_loop_utils.py",
+      "path": "C:/Users/gin_n/.claude/hooks/apex_loop_utils.py",
       "root": "claude",
       "relative_path": "hooks/apex_loop_utils.py",
       "kind": "runtime",
-      "hash": "4bd25c1c988c96c10f301bb0a8d2c09ceade3eaadcc454b3009c0e1930d36710",
+      "hash": "ed59ca460aebf605ce37bb6c1a54c71a8128ef460af77a832839c6dde70832d0",
       "protected": false
     },
     {
-      "path": "C:/Users/ADMIN/.claude/settings.json",
+      "path": "C:/Users/gin_n/.claude/settings.json",
       "root": "claude",
       "relative_path": "settings.json",
       "kind": "host-config",
-      "hash": "d6b94cdc306986f0d809a27af1196e513d07e8fe8b9ec04166025a513c8ec784",
+      "hash": "340f0587b1abee5f8b54370c5689bc0e94d5588e8dbda0bb32c5d702ba5c0d1c",
       "protected": false
     },
     {
-      "path": "C:/Users/ADMIN/.codex/config.toml",
+      "path": "C:/Users/gin_n/.codex/config.toml",
       "root": "codex",
       "relative_path": "config.toml",
       "kind": "host-config",
-      "hash": "5263b4748b0fd2b594e982d7c3778edc5a385b836ba18f6e82ac48a452344b0d",
+      "hash": "09ba537524c57fd53fa50eac8f286884dfc51abd0a337b1df8e638f59aeb8ed3",
       "protected": false
     },
     {
-      "path": "C:/Users/ADMIN/.codex/hooks/apex_loop.py",
+      "path": "C:/Users/gin_n/.codex/hooks/apex_loop.py",
       "root": "codex",
       "relative_path": "hooks/apex_loop.py",
       "kind": "runtime",
@@ -72,7 +72,7 @@
       "protected": false
     },
     {
-      "path": "C:/Users/ADMIN/.codex/hooks/apex_loop_core.py",
+      "path": "C:/Users/gin_n/.codex/hooks/apex_loop_core.py",
       "root": "codex",
       "relative_path": "hooks/apex_loop_core.py",
       "kind": "runtime",
@@ -80,27 +80,27 @@
       "protected": false
     },
     {
-      "path": "C:/Users/ADMIN/.codex/hooks/apex_loop_routes.py",
+      "path": "C:/Users/gin_n/.codex/hooks/apex_loop_routes.py",
       "root": "codex",
       "relative_path": "hooks/apex_loop_routes.py",
       "kind": "runtime",
-      "hash": "17eda81dbec6e55082ed4675a7489384df3eb4233812658632a8f3ac7782a444",
+      "hash": "dcf7ece68aaffbb75d2500f0d97c40978b3eff69e0e4cd653ef06827f21c67d0",
       "protected": false
     },
     {
-      "path": "C:/Users/ADMIN/.codex/hooks/apex_loop_runtime.py",
+      "path": "C:/Users/gin_n/.codex/hooks/apex_loop_runtime.py",
       "root": "codex",
       "relative_path": "hooks/apex_loop_runtime.py",
       "kind": "runtime",
-      "hash": "f7218446e6043fed5749dc92b2a7395b750ef8ae2da264551e13997215852d50",
+      "hash": "4138b1b4b9ef29c297ac582fe3b56ba2b94e8bf52b2497cc8879d1cc51385803",
       "protected": false
     },
     {
-      "path": "C:/Users/ADMIN/.codex/hooks/apex_loop_utils.py",
+      "path": "C:/Users/gin_n/.codex/hooks/apex_loop_utils.py",
       "root": "codex",
       "relative_path": "hooks/apex_loop_utils.py",
       "kind": "runtime",
-      "hash": "4bd25c1c988c96c10f301bb0a8d2c09ceade3eaadcc454b3009c0e1930d36710",
+      "hash": "ed59ca460aebf605ce37bb6c1a54c71a8128ef460af77a832839c6dde70832d0",
       "protected": false
     },
     {
@@ -116,7 +116,7 @@
       "root": "project",
       "relative_path": "tasks/loops/workflow.md",
       "kind": "workflow",
-      "hash": "a3c32ddd36f94f467cd7563f340956606f217ea43ccfa7d5129edf989f637015",
+      "hash": "e2c56208fc862828df7bcad349f11b92d480aae4ad243c054f920286456305f1",
       "protected": true
     },
     {

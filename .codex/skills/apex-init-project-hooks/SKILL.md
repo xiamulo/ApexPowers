@@ -62,16 +62,19 @@ py -3 .codex\skills\apex-init-project-hooks\scripts\apex_loop.py render-config c
 ## Workflow-state
 
 - Installer 会创建 `tasks/loops/workflow.md`，使用 `[apex-state:*]...[/apex-state:*]` 状态块。
-- Runtime 当前支持 `no_task`、`planning`、`implementing`、`review_required`、`validation_required`、`done`。
+- Runtime 当前支持 `no_task`、`planning`、`implementing`、`security_required`、`review_required`、`validation_required`、`done`。
 - `SessionStart` 会注入当前 workflow state 摘要；`UserPromptSubmit` 会输出完整 `<apex-workflow-state>` block。
 - 如果 `workflow.md` 缺失或状态块缺失，runtime 使用显式 fallback，不会静默失败。
 
 ## 运行时边界
 
 - `UserPromptSubmit` 只输出 workflow-state 和 advisory route hint，不硬阻塞。
-- `PreToolUse`、`PostToolUse`、`Stop` 才能在确定性证据足够时阻塞。
+- `PreToolUse`、`PostToolUse`、`Stop` 才能在确定性证据足够时介入；PostToolUse 不能撤销已完成工具，只能反馈并标记后续清理要求。
 - 每个 block / strong warning 都必须包含 `guard`、`reason`、`fix`、`failure_class`、`run_id`，并写入已忽略的 failure JSONL。
-- Stop review gate 必须同时看到 `> **Status**: Ready` 和 `> **Validation**: Pass`，否则继续阻塞完成。
+- PostToolUse 发现 secret-like 内容时写入 `tasks/loops/security-required.json`；Stop 会在该状态清理前阻塞完成。
+- Stop review gate 读取 `tasks/reviews/<slug>.md` 的结构化 frontmatter；新 review request 使用 YAML，旧 TOML frontmatter 兼容读取。放行要求 `status: ready`、`validation: pass` 或 `automated-pass`、`reviewed_diff_hash` 覆盖当前 diff、`required_checks.exit_code = 0`，且 reviewer role / id 满足风险级别。
+- `stop_hook_active=true` 时不递归创建 review request；state.json 记录 `last_block_reason_hash`、`block_count_for_same_reason`、`continuation_count`、`max_continuations`、`created_review_request`，相同 Stop blocker 会允许本轮以 blocked / follow-up-required 状态结束，而不是继续空转。
+- `PostToolUse` 使用 diff-aware 路径、guard file-hash cache 和 failure dedupe；支持 `PostToolBatch/default` 复用同一检查逻辑，降低并发/批量工具调用时的重复扫描和重复 failures。
 
 ## 验证
 

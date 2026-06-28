@@ -11,15 +11,28 @@ import re
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any, Iterable
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 fallback.
+    tomllib = None  # type: ignore[assignment]
+
+try:
+    import yaml
+except ModuleNotFoundError:  # pragma: no cover - optional dependency.
+    yaml = None  # type: ignore[assignment]
 
 from apex_loop_routes import (
     BACKEND_EXTENSIONS,
     FRONTEND_EXTENSIONS,
     GENERATED_MARKER,
     GENERATED_PATH_PARTS,
+    SCRIPT_EXTENSIONS,
     SECRET_ALLOWLIST_SUFFIXES,
     SECRET_NAME_PATTERNS,
     SOURCE_EXTENSIONS,
@@ -29,6 +42,11 @@ from apex_loop_routes import (
 
 WORKFLOW_PATH = Path("tasks") / "loops" / "workflow.md"
 WORKFLOW_BLOCK_PATTERN = re.compile(r"\[apex-state:([A-Za-z0-9_-]+)\](.*?)\[/apex-state:\1\]", re.S)
+SECURITY_REQUIRED_PATH = Path("tasks") / "loops" / "security-required.json"
+GUARD_CACHE_VERSION = 1
+SECRET_GUARD_VERSION = "v2"
+FAILURE_DEDUPE_VERSION = 1
+FAILURE_DEDUPE_WINDOW_SECONDS = 3600
 
 
 @dataclass(frozen=True)
@@ -38,6 +56,86 @@ class WorkflowState:
     status: str
     body: str
     source: str
+
+
+@dataclass(frozen=True)
+class ActiveTask:
+    """Task selected for workflow and review gates."""
+
+    slug: str
+    todo_path: Path
+    source: str
+    review_path: Path | None = None
+    owned_paths: tuple[str, ...] = ()
+    risk_level: str = "medium"
+    ambiguous_reason: str = ""
+
+
+@dataclass(frozen=True)
+class LineLengthThreshold:
+    """Type-aware effective line thresholds."""
+
+    category: str
+    warning: int
+    hard: int
+    target: str
+    split_hint: str
+
+
+@dataclass(frozen=True)
+class NormalizedPath:
+    """Repo-confined path normalization result."""
+
+    raw: str
+    absolute: Path | None
+    relative: Path | None
+    inside_repo: bool
+    exists: bool
+    reason: str = ""
+
+    def posix(self) -> str:
+        """Repo-relative path when available, otherwise the raw path."""
+
+        return self.relative.as_posix() if self.relative else self.raw
+
+
+@dataclass(frozen=True)
+class PendingWriteText:
+    """Text that is about to be written by a tool call."""
+
+    source: str
+    text: str
+
+
+@dataclass(frozen=True)
+class ReviewDoc:
+    """Structured review status parsed from frontmatter or legacy Markdown."""
+
+    status: str
+    validation: str
+    reviewed_diff_hash: str
+    reviewed_hashes: dict[str, str]
+    required_checks_ok: bool
+    open_blockers: bool
+    risk_level: str
+    reviewer_role: str
+    invalid_reason: str = ""
+    legacy: bool = False
+    reviewer_id: str = ""
+    implementer_id: str = ""
+    schema_format: str = ""
+
+    @property
+    def ready(self) -> bool:
+        """Whether the review declares review readiness."""
+
+        return self.status == "ready"
+
+    @property
+    def validation_passed(self) -> bool:
+        """Whether validation evidence is acceptable."""
+
+        return self.validation in {"pass", "automated-pass"}
 
 
 class HookInput:
@@ -69,6 +167,11 @@ class HookInput:
 
         return first_string(self.payload, {"command", "cmd", "script", "shell_command"})
 
+    def tool_name(self) -> str:
+        """Best-effort tool name from host payload."""
+
+        return first_string(self.payload, {"tool_name", "tool", "name"}).strip()
+
     def prompt_text(self) -> str:
         """Best-effort user prompt text from host payload."""
 
@@ -89,8 +192,13 @@ class HookInput:
         """Best-effort changed file paths from host payload."""
 
         paths: list[str] = []
-        collect_values(self.payload, {"file_path", "path", "target_file", "relative_path", "file"}, paths)
+        collect_values(self.payload, {"file_path", "filepath", "filePath", "path", "target_file", "relative_path", "file", "file_path_abs"}, paths)
         return unique_strings(paths)
+
+    def cwd_text(self) -> str:
+        """Best-effort cwd from host payload."""
+
+        return first_string(self.payload, {"cwd", "working_directory", "workdir"})
 
 
 class HookContext:
@@ -116,18 +224,79 @@ class HookContext:
     def rel_path(self, path_value: str) -> Path | None:
         """Resolve a host path safely inside the repo."""
 
-        cleaned = path_value.strip().strip('"').strip("'").replace("\\", "/")
-        if not cleaned:
+        normalized = normalize_repo_path(path_value, self.cwd(), self.repo_root)
+        return normalized.relative if normalized.inside_repo else None
+
+    def normalize_path(self, path_value: str) -> NormalizedPath:
+        """Resolve a host path with explicit failure metadata."""
+
+        return normalize_repo_path(path_value, self.cwd(), self.repo_root)
+
+    def cwd(self) -> Path:
+        """Tool working directory, constrained to repo root."""
+
+        cwd_text = self.hook_input.cwd_text()
+        if not cwd_text:
+            return self.repo_root
+        normalized = normalize_repo_path(cwd_text, self.repo_root, self.repo_root)
+        if normalized.inside_repo and normalized.absolute:
+            return normalized.absolute
+        return self.repo_root
+
+    def current_diff_hash(self, paths: Iterable[str] | None = None) -> str:
+        """Stable hash of current code-relevant file contents."""
+
+        selected = sorted({path for path in (paths if paths is not None else self.changed_files()) if is_reviewable_code_path(Path(path))})
+        fingerprints = code_file_fingerprints(self.repo_root, selected)
+        payload = json.dumps(fingerprints, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def write_session_snapshot(self) -> Path:
+        """Persist a compact-safe session snapshot."""
+
+        changed = self.changed_files()
+        workflow = resolve_workflow_state(self.repo_root, changed)
+        task = active_task(self.repo_root)
+        snapshot = {
+            "schema_version": 1,
+            "captured_at": timestamp(),
+            "workflow_state": workflow.status,
+            "workflow_source": workflow.source,
+            "active_task": task.slug if task else "",
+            "todo_path": task.todo_path.relative_to(self.repo_root).as_posix() if task else "",
+            "review_path": f"tasks/reviews/{task.slug}.md" if task else "",
+            "changed_files": changed,
+            "current_diff_hash": self.current_diff_hash(changed),
+            "blockers": compact_blockers(self.repo_root, changed, task),
+            "security_required": security_required(self.repo_root),
+        }
+        path = self.repo_root / "tasks" / "loops" / "session-snapshot.json"
+        with json_file_lock(path):
+            write_json_object(path, snapshot)
+        return path
+
+    def write_failure(self, failure: StructuredFailure, slug: str | None = None) -> None:
+        """Append a structured failure record to tasks/loops."""
+
+        loops_dir = self.repo_root / "tasks" / "loops"
+        if slug:
+            loops_dir = loops_dir / safe_slug(slug, "task")
+        loops_dir.mkdir(parents=True, exist_ok=True)
+        record = {
+            "ts": timestamp(),
+            "host": self.host,
+            "route": self.route,
+            "diff_hash": self.current_diff_hash(self.changed_files()),
+            **failure.to_dict(),
+        }
+        dedupe_key = failure_dedupe_key(record)
+        record["dedupe_key"] = dedupe_key
+        if should_skip_failure_record(self.repo_root, dedupe_key):
             return None
-        candidate = Path(cleaned)
-        if not candidate.is_absolute():
-            candidate = self.repo_root / candidate
-        try:
-            resolved = candidate.resolve()
-            resolved.relative_to(self.repo_root)
-        except (OSError, ValueError):
-            return None
-        return resolved.relative_to(self.repo_root)
+        failures_path = loops_dir / "failures.jsonl"
+        with json_file_lock(failures_path):
+            with failures_path.open("a", encoding="utf-8", newline="\n") as handle:
+                handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
     def absolute(self, rel_path: Path) -> Path:
         """Absolute path for a repo-relative path."""
@@ -152,22 +321,12 @@ class HookContext:
         """Changed and untracked files relative to HEAD."""
 
         names: set[str] = set()
-        for args in (["diff", "--name-only", "HEAD"], ["ls-files", "--others", "--exclude-standard"]):
+        for args in (["diff", "--name-only", "--diff-filter=ACMRT", "HEAD"], ["ls-files", "--others", "--exclude-standard"]):
             result = self.git(args)
             if result.returncode == 0:
                 names.update(line.strip().replace("\\", "/") for line in result.stdout.splitlines() if line.strip())
         return sorted(names)
 
-    def write_failure(self, failure: StructuredFailure, slug: str | None = None) -> None:
-        """Append a structured failure record to tasks/loops."""
-
-        loops_dir = self.repo_root / "tasks" / "loops"
-        if slug:
-            loops_dir = loops_dir / safe_slug(slug, "task")
-        loops_dir.mkdir(parents=True, exist_ok=True)
-        record = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"), **failure.to_dict()}
-        with (loops_dir / "failures.jsonl").open("a", encoding="utf-8", newline="\n") as handle:
-            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def first_string(value: Any, keys: set[str]) -> str:
@@ -215,6 +374,129 @@ def unique_strings(values: Iterable[str]) -> list[str]:
     return output
 
 
+def tool_input(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return the host tool_input object when present."""
+
+    value = payload.get("tool_input")
+    return value if isinstance(value, dict) else payload
+
+
+def extract_pending_write_text(payload: dict[str, Any], host: str) -> list[PendingWriteText]:
+    """Extract text that a tool is about to write without reading files."""
+
+    _ = host
+    item = tool_input(payload)
+    output: list[PendingWriteText] = []
+    content = item.get("content")
+    if isinstance(content, str):
+        output.append(PendingWriteText("tool_input.content", content))
+    new_string = item.get("new_string")
+    if isinstance(new_string, str):
+        output.append(PendingWriteText("tool_input.new_string", new_string))
+    edits = item.get("edits")
+    if isinstance(edits, list):
+        for index, edit in enumerate(edits):
+            if isinstance(edit, dict) and isinstance(edit.get("new_string"), str):
+                output.append(PendingWriteText(f"tool_input.edits[{index}].new_string", edit["new_string"]))
+
+    command = first_string(payload, {"command", "cmd", "script", "shell_command"})
+    if command:
+        patch_text = extract_apply_patch_added_lines(command)
+        if patch_text:
+            output.append(PendingWriteText("apply_patch.added_lines", patch_text))
+        if is_obvious_shell_write(command):
+            output.append(PendingWriteText("shell.write_command", command))
+    return output
+
+
+def extract_apply_patch_added_lines(text: str) -> str:
+    """Return added lines from apply_patch or unified patch text."""
+
+    added: list[str] = []
+    in_patch = "*** Begin Patch" in text or "*** Add File:" in text or "*** Update File:" in text
+    for line in text.splitlines():
+        if line.startswith("+") and not line.startswith("+++"):
+            added.append(line[1:])
+        elif in_patch and line.startswith("*** Add File:"):
+            continue
+    return "\n".join(added)
+
+
+def extract_apply_patch_paths(text: str) -> list[str]:
+    """Extract changed file paths from apply_patch or unified patch text."""
+
+    paths: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        for prefix in ("*** Add File:", "*** Update File:", "*** Delete File:", "*** Move to:"):
+            if stripped.startswith(prefix):
+                paths.append(stripped.removeprefix(prefix).strip())
+        if stripped.startswith("+++ b/"):
+            paths.append(stripped.removeprefix("+++ b/").strip())
+        elif stripped.startswith("--- a/"):
+            paths.append(stripped.removeprefix("--- a/").strip())
+    return unique_strings(paths)
+
+
+def is_obvious_shell_write(command: str) -> bool:
+    """Whether a shell command clearly writes content to disk."""
+
+    patterns = (
+        r"<<\s*['\"]?\w+['\"]?",
+        r"\bcat\s+>\s+",
+        r"\becho\b.+(>|>>)",
+        r"\bprintf\b.+(>|>>)",
+        r"\bSet-Content\b",
+        r"\bAdd-Content\b",
+        r"\bOut-File\b",
+        r"\bopen\s*\(.+['\"]w['\"]",
+    )
+    return any(re.search(pattern, command, re.I | re.S) for pattern in patterns)
+
+
+def extract_shell_write_paths(command: str) -> list[str]:
+    """Best-effort target paths from obvious shell write commands."""
+
+    paths: list[str] = []
+    for match in re.finditer(r"(?:>|>>)\s*([\"']?)([^\"'\s|&;<>]+)\1", command):
+        target = match.group(2).strip()
+        if target and target not in {"&1", "&2"}:
+            paths.append(target)
+    powershell_patterns = (
+        r"\b(?:Set-Content|Add-Content|Out-File)\b(?:\s+-Path|\s+-LiteralPath|\s+-FilePath)?\s+([\"'])(.+?)\1",
+        r"\b(?:Set-Content|Add-Content|Out-File)\b(?:\s+-Path|\s+-LiteralPath|\s+-FilePath)?\s+([^\s|;]+)",
+    )
+    for pattern in powershell_patterns:
+        for match in re.finditer(pattern, command, re.I):
+            paths.append(match.group(2 if match.lastindex and match.lastindex >= 2 else 1).strip())
+    return unique_strings(paths)
+
+
+def context_paths_diff_aware(context: HookContext, fallback_to_changed: bool) -> list[Path]:
+    """Paths from payload, tool-specific extraction, and optional git fallback."""
+
+    raw_paths = list(context.hook_input.file_paths())
+    command = context.hook_input.command_text()
+    if command:
+        raw_paths.extend(extract_apply_patch_paths(command))
+        raw_paths.extend(extract_shell_write_paths(command))
+
+    output: list[Path] = []
+    seen: set[str] = set()
+    for raw_path in raw_paths:
+        normalized = context.normalize_path(raw_path)
+        if not normalized.inside_repo or not normalized.relative:
+            continue
+        key = normalized.relative.as_posix()
+        if key not in seen:
+            seen.add(key)
+            output.append(normalized.relative)
+
+    if not output and fallback_to_changed:
+        output.extend(Path(path) for path in context.changed_files())
+    return output
+
+
 def resolve_repo_root(start: Path) -> Path:
     """Resolve git root, falling back to the current directory."""
 
@@ -230,6 +512,33 @@ def resolve_repo_root(start: Path) -> Path:
     if result.returncode == 0 and result.stdout.strip():
         return Path(result.stdout.strip()).resolve()
     return start.resolve()
+
+
+def timestamp() -> str:
+    """Current local timestamp for state files."""
+
+    return time.strftime("%Y-%m-%dT%H:%M:%S%z")
+
+
+def normalize_repo_path(raw_path: str, cwd: Path, repo_root: Path) -> NormalizedPath:
+    """Resolve a path, following existing symlinks, and keep it inside the repo."""
+
+    cleaned = os.path.expandvars(raw_path.strip().strip('"').strip("'"))
+    if not cleaned:
+        return NormalizedPath(raw_path, None, None, False, False, "empty_path")
+    candidate = Path(cleaned).expanduser()
+    if not candidate.is_absolute():
+        candidate = cwd / candidate
+    try:
+        resolved = candidate.resolve(strict=False)
+        exists = resolved.exists()
+        if exists:
+            resolved = candidate.resolve(strict=True)
+        repo_resolved = repo_root.resolve(strict=True) if repo_root.exists() else repo_root.resolve(strict=False)
+        relative = resolved.relative_to(repo_resolved)
+    except (OSError, RuntimeError, ValueError) as exc:
+        return NormalizedPath(raw_path, candidate, None, False, candidate.exists(), type(exc).__name__)
+    return NormalizedPath(raw_path, resolved, relative, True, exists)
 
 
 def safe_slug(value: str, fallback: str) -> str:
@@ -253,6 +562,7 @@ def is_secret_name(name: str) -> bool:
     """Whether one path segment is an explicit secret-like name."""
 
     exact_names = {".npmrc", ".pypirc", "id_rsa", "id_dsa", "id_ed25519"}
+    exact_sensitive = {"credentials", "credential", "token", "secret", "secrets"}
     if name in exact_names or name == ".env" or name.startswith(".env."):
         return True
 
@@ -260,9 +570,24 @@ def is_secret_name(name: str) -> bool:
     if re.search(r"(^|[.-])private-key($|[.-])", canonical):
         return True
 
-    tokens = set(re.split(r"[._\-\s]+", name))
-    sensitive_tokens = set(SECRET_NAME_PATTERNS) - exact_names - {".env", ".npmrc", ".pypirc", "id_rsa", "id_dsa", "id_ed25519", "private-key"}
-    return bool(tokens & sensitive_tokens)
+    stem = canonical.split(".", 1)[0].strip("-")
+    return name in exact_sensitive or stem in exact_sensitive
+
+
+def mentions_secret_path(text: str) -> bool:
+    """Whether path-like text mentions a protected secret path."""
+
+    value = text.strip().strip('"').strip("'")
+    if not value:
+        return False
+    lowered = value.lower().replace("\\", "/")
+    if any(lowered.endswith(suffix) for suffix in SECRET_ALLOWLIST_SUFFIXES):
+        return False
+    if re.search(r"(^|/|\s)\.env($|[./\s*?{])", lowered):
+        return True
+    cleaned = re.sub(r"[*?{}\[\]()+^$|]", "", lowered)
+    parts = [part for part in re.split(r"[/\s]+", cleaned) if part]
+    return any(is_secret_name(part) for part in parts)
 
 
 def is_source_file(path: Path) -> bool:
@@ -281,15 +606,41 @@ def is_generated_exception(path: Path) -> bool:
     return any(token in text for token in (".lock", ".min.", "generated", "snapshot"))
 
 
-def thresholds_for(path: Path) -> tuple[int, int, str]:
-    """Warning, hard limit, and target range for a file."""
+def thresholds_for(path: Path) -> LineLengthThreshold:
+    """Warning and hard limits tuned by source file category."""
 
     suffix = path.suffix.lower()
     if suffix in FRONTEND_EXTENSIONS:
-        return 400, 500, "200-250 effective lines"
+        return LineLengthThreshold(
+            "frontend component",
+            300,
+            500,
+            "150-250 effective lines",
+            "拆出子组件、custom hooks/composables、view-model、constants 或 styles。",
+        )
+    if suffix in SCRIPT_EXTENSIONS:
+        return LineLengthThreshold(
+            "frontend/script module",
+            350,
+            600,
+            "200-350 effective lines",
+            "拆出 domain helpers、API clients、types、constants 或 feature modules。",
+        )
     if suffix in BACKEND_EXTENSIONS:
-        return 400, 500, "up to 300 effective lines"
-    return 400, 500, "150-300 effective lines"
+        return LineLengthThreshold(
+            "backend module",
+            450,
+            750,
+            "250-450 effective lines",
+            "拆出 service、repository、handler/controller、mapper、validator 或 query builder。",
+        )
+    return LineLengthThreshold(
+        "source module",
+        400,
+        650,
+        "200-400 effective lines",
+        "按职责拆出 helper、types、constants 或 adapter。",
+    )
 
 
 def count_effective_lines(path: Path) -> int:
@@ -319,6 +670,50 @@ def count_effective_lines(path: Path) -> int:
     return count
 
 
+def count_effective_lines_text(text: str) -> int:
+    """Count non-empty, non-comment source lines from text."""
+
+    in_block = False
+    count = 0
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if in_block:
+            if "*/" in line or "-->" in line:
+                in_block = False
+            continue
+        if line.startswith(("/*", "<!--")):
+            if "*/" not in line and "-->" not in line:
+                in_block = True
+            continue
+        if line.startswith(("//", "#", "*", "<!--")):
+            continue
+        count += 1
+    return count
+
+
+def count_effective_lines_at_head(repo_root: Path, rel_path: Path) -> int | None:
+    """Count effective lines for a file at HEAD, returning None for new files."""
+
+    try:
+        result = subprocess.run(
+            ["git", "show", f"HEAD:{rel_path.as_posix()}"],
+            cwd=repo_root,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    return count_effective_lines_text(result.stdout)
+
+
 def context_paths_or_changed(context: HookContext) -> list[Path]:
     """Paths from hook input, falling back to git changes."""
 
@@ -332,6 +727,256 @@ def context_paths_or_changed(context: HookContext) -> list[Path]:
     return output
 
 
+def context_paths_only(context: HookContext) -> list[Path]:
+    """Paths explicitly reported by the hook payload."""
+
+    return context_paths_diff_aware(context, fallback_to_changed=False)
+
+
+def should_skip_generated_or_large(path: Path, absolute: Path, max_size: int = 1_000_000) -> bool:
+    """Whether guard scans should skip a path for performance/noise."""
+
+    if is_generated_exception(path):
+        return True
+    name = path.name.lower()
+    if name in {"package-lock.json", "pnpm-lock.yaml", "yarn.lock"}:
+        return True
+    try:
+        return absolute.stat().st_size > max_size or not is_probably_text_file(absolute)
+    except OSError:
+        return True
+
+
+def is_probably_text_file(path: Path) -> bool:
+    """Small binary sniff for guard scans."""
+
+    try:
+        chunk = path.read_bytes()[:4096]
+    except OSError:
+        return False
+    return b"\x00" not in chunk
+
+
+def file_sha256(path: Path) -> str:
+    """SHA-256 for a file, or a stable unreadable marker."""
+
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return "unreadable"
+
+
+def guard_cache_path(repo_root: Path) -> Path:
+    """Path to guard scan cache."""
+
+    return repo_root / "tasks" / "loops" / ".cache" / "guard-cache.json"
+
+
+def failure_dedupe_path(repo_root: Path) -> Path:
+    """Path to failure dedupe cache."""
+
+    return repo_root / "tasks" / "loops" / ".cache" / "failure-dedupe.json"
+
+
+def security_required_path(repo_root: Path) -> Path:
+    """Path to unresolved post-tool security state."""
+
+    return repo_root / SECURITY_REQUIRED_PATH
+
+
+def load_json_object(path: Path) -> dict[str, Any]:
+    """Load JSON object or return empty mapping."""
+
+    if not path.is_file():
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8", errors="ignore"))
+    except json.JSONDecodeError:
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def write_json_object(path: Path, value: dict[str, Any]) -> None:
+    """Write JSON object with stable formatting."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    tmp_path.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+    os.replace(tmp_path, path)
+
+
+@contextmanager
+def json_file_lock(path: Path, timeout_seconds: float = 2.0) -> Iterable[None]:
+    """Best-effort lock for small JSON state/cache files."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_name(f"{path.name}.lock")
+    fd: int | None = None
+    deadline = time.time() + timeout_seconds
+    while fd is None:
+        try:
+            fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, str(os.getpid()).encode("utf-8"))
+        except FileExistsError:
+            if time.time() >= deadline:
+                break
+            time.sleep(0.05)
+    try:
+        yield
+    finally:
+        if fd is not None:
+            os.close(fd)
+            try:
+                lock_path.unlink()
+            except OSError:
+                pass
+
+
+def cached_guard_result(repo_root: Path, guard: str, rel_path: Path, digest: str) -> str | None:
+    """Read cached guard result for a file digest."""
+
+    cache = load_json_object(guard_cache_path(repo_root))
+    entries = cache.get("entries")
+    if not isinstance(entries, dict):
+        return None
+    entry = entries.get(f"{guard}:{SECRET_GUARD_VERSION}:{rel_path.as_posix()}:{digest}")
+    if isinstance(entry, dict) and entry.get("sha256") == digest:
+        result = entry.get("result")
+        return result if isinstance(result, str) else None
+    return None
+
+
+def update_guard_cache(repo_root: Path, guard: str, rel_path: Path, digest: str, result: str, absolute: Path) -> None:
+    """Persist guard result for a file digest."""
+
+    path = guard_cache_path(repo_root)
+    with json_file_lock(path):
+        cache = load_json_object(path)
+        entries = cache.setdefault("entries", {})
+        if not isinstance(entries, dict):
+            entries = {}
+            cache["entries"] = entries
+        stat = absolute.stat() if absolute.exists() else None
+        entries[f"{guard}:{SECRET_GUARD_VERSION}:{rel_path.as_posix()}:{digest}"] = {
+            "sha256": digest,
+            "mtime_ns": stat.st_mtime_ns if stat else 0,
+            "size": stat.st_size if stat else 0,
+            "result": result,
+            "checked_at": timestamp(),
+        }
+        cache["schema_version"] = GUARD_CACHE_VERSION
+        write_json_object(path, cache)
+
+
+def failure_dedupe_key(record: dict[str, Any]) -> str:
+    """Stable key for suppressing repeated failure JSONL entries."""
+
+    fields = [
+        str(record.get("host", "")),
+        str(record.get("route", "")),
+        str(record.get("guard", "")),
+        str(record.get("event", "")),
+        str(record.get("action", "")),
+        str(record.get("failure_class", "")),
+        str(record.get("subject", "")),
+        str(record.get("diff_hash", "")),
+        hashlib.sha256(str(record.get("reason", "")).encode("utf-8")).hexdigest()[:16],
+    ]
+    return ":".join(fields)
+
+
+def should_skip_failure_record(repo_root: Path, dedupe_key: str) -> bool:
+    """Update dedupe index and return True when JSONL append should be skipped."""
+
+    path = failure_dedupe_path(repo_root)
+    with json_file_lock(path):
+        cache = load_json_object(path)
+        now = int(time.time())
+        entries = cache.setdefault("entries", {})
+        if not isinstance(entries, dict):
+            entries = {}
+            cache["entries"] = entries
+        entry = entries.get(dedupe_key)
+        skip = False
+        if isinstance(entry, dict):
+            last_seen = int(entry.get("last_seen_epoch", 0))
+            skip = now - last_seen < FAILURE_DEDUPE_WINDOW_SECONDS
+            entry["last_seen_epoch"] = now
+            entry["last_seen_at"] = timestamp()
+            entry["count"] = int(entry.get("count", 1)) + 1
+        else:
+            entries[dedupe_key] = {
+                "first_seen_epoch": now,
+                "last_seen_epoch": now,
+                "first_seen_at": timestamp(),
+                "last_seen_at": timestamp(),
+                "count": 1,
+            }
+        cache["schema_version"] = FAILURE_DEDUPE_VERSION
+        write_json_object(path, cache)
+        return skip
+
+
+def mark_security_required(repo_root: Path, failure: StructuredFailure, run_id: str) -> None:
+    """Persist a security follow-up requirement created after a tool already ran."""
+
+    path = security_required_path(repo_root)
+    with json_file_lock(path):
+        payload = load_json_object(path)
+        current_subjects = payload.get("subjects")
+        subjects = [item for item in current_subjects if isinstance(item, str)] if isinstance(current_subjects, list) else []
+        if failure.subject and failure.subject not in subjects:
+            subjects.append(failure.subject)
+        events = payload.get("events")
+        event_count = int(events) if isinstance(events, int) else 0
+        data = {
+            "schema_version": 1,
+            "status": "security_required",
+            "guard": failure.guard,
+            "failure_class": failure.failure_class,
+            "reason": failure.reason,
+            "fix": failure.fix,
+            "run_id": run_id,
+            "subjects": subjects,
+            "events": event_count + 1,
+            "updated_at": timestamp(),
+        }
+        first_seen = payload.get("first_seen_at")
+        data["first_seen_at"] = first_seen if isinstance(first_seen, str) and first_seen else data["updated_at"]
+        write_json_object(path, data)
+
+
+def security_required(repo_root: Path) -> bool:
+    """Whether unresolved security follow-up state is present."""
+
+    payload = load_json_object(security_required_path(repo_root))
+    return payload.get("status") == "security_required"
+
+
+def security_required_failure(repo_root: Path, run_id: str) -> StructuredFailure | None:
+    """Return a Stop blocker for unresolved post-tool security state."""
+
+    payload = load_json_object(security_required_path(repo_root))
+    if payload.get("status") != "security_required":
+        return None
+    subjects = payload.get("subjects")
+    subject_text = ", ".join(item for item in subjects if isinstance(item, str)) if isinstance(subjects, list) else ""
+    suffix = f" ({subject_text})" if subject_text else ""
+    reason = str(payload.get("reason") or "PostToolUse detected secret-like content after a tool already ran.").strip()
+    fix = str(payload.get("fix") or "Remove the secret-like content, rotate any real credential, and rerun validation.").strip()
+    return StructuredFailure(
+        "SecretContentGuard",
+        f"security_required remains unresolved{suffix}: {reason}",
+        fix,
+        "security_risk",
+        run_id,
+        action="block",
+        event="Stop",
+        effect="followup_required",
+        subject=subject_text,
+    )
+
+
 def is_reviewable_code_path(path: Path) -> bool:
     """Whether a changed file should trigger review."""
 
@@ -341,18 +986,155 @@ def is_reviewable_code_path(path: Path) -> bool:
     return not text.startswith(("tasks/", "plans/", "docs/", ".codex/agents/", ".claude/agents/"))
 
 
-def newest_todo(repo_root: Path) -> Path | None:
-    """Newest tasks/todo+*.md file."""
+def todo_slug(path: Path) -> str:
+    """Slug derived from a todo filename."""
+
+    return safe_slug(path.stem.removeprefix("todo+"), "task")
+
+
+def todo_candidates(repo_root: Path) -> list[Path]:
+    """Todo task files sorted by recency."""
 
     tasks_dir = repo_root / "tasks"
     if not tasks_dir.is_dir():
-        return None
+        return []
     todos = list(tasks_dir.glob("todo+*.md"))
-    return max(todos, key=lambda path: path.stat().st_mtime) if todos else None
+    return sorted(todos, key=lambda path: path.stat().st_mtime, reverse=True)
+
+
+def newest_todo(repo_root: Path) -> Path | None:
+    """Newest tasks/todo+*.md file."""
+
+    todos = todo_candidates(repo_root)
+    return todos[0] if todos else None
+
+
+def active_task_from_state(repo_root: Path) -> ActiveTask | None:
+    """Active task inferred from per-slug loop state."""
+
+    loops_dir = repo_root / "tasks" / "loops"
+    if not loops_dir.is_dir():
+        return None
+
+    candidates: list[tuple[float, ActiveTask]] = []
+    for state_path in loops_dir.glob("*/state.json"):
+        slug = state_path.parent.name
+        state = read_loop_state(repo_root, slug)
+        phase = state.get("phase")
+        if phase == "done":
+            continue
+        raw_todo = state.get("todo_path")
+        if not isinstance(raw_todo, str) or not raw_todo:
+            continue
+        todo_path = repo_root / raw_todo
+        if todo_path.is_file():
+            review_path = repo_root / "tasks" / "reviews" / f"{slug}.md"
+            candidates.append((state_path.stat().st_mtime, ActiveTask(slug, todo_path, "loop-state", review_path=review_path)))
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    return candidates[0][1]
+
+
+def active_task(repo_root: Path) -> ActiveTask | None:
+    """Task selected without blindly binding to the newest todo."""
+
+    changed = git_changed_files(repo_root)
+    indexed_task = active_task_from_index(repo_root, changed)
+    if indexed_task:
+        return indexed_task
+
+    state_task = active_task_from_state(repo_root)
+    if state_task:
+        return state_task
+
+    todos = todo_candidates(repo_root)
+    if len(todos) == 1:
+        todo_path = todos[0]
+        slug = todo_slug(todo_path)
+        return ActiveTask(slug, todo_path, "single-todo", review_path=repo_root / "tasks" / "reviews" / f"{slug}.md")
+    return None
+
+
+def active_task_from_index(repo_root: Path, changed_files: list[str]) -> ActiveTask | None:
+    """Select an active task from tasks/loops/active.json using owned_paths."""
+
+    active_path = repo_root / "tasks" / "loops" / "active.json"
+    payload = load_json_object(active_path)
+    raw_tasks = payload.get("active_tasks")
+    if not isinstance(raw_tasks, list) or not raw_tasks:
+        return None
+
+    scored: list[tuple[int, ActiveTask]] = []
+    active_without_paths = 0
+    for item in raw_tasks:
+        if not isinstance(item, dict) or str(item.get("status", "active")).lower() != "active":
+            continue
+        slug = safe_slug(str(item.get("slug") or item.get("task_id") or ""), "task")
+        todo_value = item.get("todo_path")
+        if not isinstance(todo_value, str) or not todo_value:
+            continue
+        todo_path = repo_root / todo_value
+        if not todo_path.is_file():
+            continue
+        owned_paths = tuple(path for path in item.get("owned_paths", []) if isinstance(path, str) and path)
+        review_value = item.get("review_path")
+        review_path = repo_root / str(review_value) if isinstance(review_value, str) and review_value else repo_root / "tasks" / "reviews" / f"{slug}.md"
+        risk_level = str(item.get("risk_level", "medium")).lower()
+        task = ActiveTask(slug, todo_path, "active-index", review_path=review_path, owned_paths=owned_paths, risk_level=risk_level)
+        if not owned_paths:
+            active_without_paths += 1
+            continue
+        score = count_owned_path_matches(changed_files, owned_paths)
+        if score:
+            scored.append((score, task))
+
+    if len(scored) == 1:
+        return scored[0][1]
+    if len(scored) > 1:
+        scored.sort(key=lambda item: item[0], reverse=True)
+        if len(scored) == 1 or scored[0][0] > scored[1][0]:
+            return scored[0][1]
+        return ActiveTask("ambiguous", Path(), "active-index", ambiguous_reason="Ambiguous active tasks. Split diff or select task_id.")
+    if active_without_paths == 1:
+        return None
+    return None
+
+
+def count_owned_path_matches(changed_files: list[str], owned_paths: tuple[str, ...]) -> int:
+    """Count changed files matched by owned path globs."""
+
+    score = 0
+    for changed in changed_files:
+        normalized = changed.replace("\\", "/")
+        for pattern in owned_paths:
+            clean_pattern = pattern.replace("\\", "/")
+            if fnmatch(normalized, clean_pattern) or normalized.startswith(clean_pattern.rstrip("*").rstrip("/")):
+                score += 1
+                break
+    return score
 
 
 def review_status(path: Path) -> str:
     """Review file status: missing, ready, issues, or pending."""
+
+    doc = parse_review_file(path)
+    if doc.invalid_reason == "missing":
+        return "missing"
+    if doc.invalid_reason and not doc.legacy:
+        return "invalid"
+    if doc.open_blockers:
+        return "issues"
+    if doc.ready:
+        return "ready"
+    if doc.legacy:
+        return "migration_required"
+    return doc.status if doc.status in {"pending", "blocked"} else "pending"
+
+
+def legacy_review_status(path: Path) -> str:
+    """Legacy Markdown review status parser used only for migration signals."""
 
     if not path.exists():
         return "missing"
@@ -366,6 +1148,19 @@ def review_status(path: Path) -> str:
 
 def validation_status(path: Path) -> str:
     """Validation status declared in a review file."""
+
+    doc = parse_review_file(path)
+    if doc.invalid_reason == "missing":
+        return "missing"
+    if doc.invalid_reason and not doc.legacy:
+        return "invalid"
+    if doc.legacy:
+        return "migration_required" if doc.validation == "missing" else doc.validation
+    return doc.validation
+
+
+def legacy_validation_status(path: Path) -> str:
+    """Legacy Markdown validation parser used only for migration signals."""
 
     if not path.exists():
         return "missing"
@@ -386,6 +1181,268 @@ def has_labeled_status(text: str, labels: Iterable[str], values: Iterable[str]) 
     for label in labels:
         label_pattern = re.escape(label)
         if re.search(rf"\*{{0,2}}{label_pattern}\*{{0,2}}\s*:\s*({value_pattern})\b", text):
+            return True
+    return False
+
+
+def parse_yaml_frontmatter_subset(text: str) -> dict[str, Any] | None:
+    """Parse the small YAML subset used by Apex review frontmatter."""
+
+    lines: list[tuple[int, str]] = []
+    for raw in text.splitlines():
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        indent = len(raw) - len(raw.lstrip(" "))
+        lines.append((indent, raw.strip()))
+    if not lines:
+        return {}
+    value, index = parse_yaml_block(lines, 0, lines[0][0])
+    if index < len(lines) or not isinstance(value, dict):
+        return None
+    return value
+
+
+def parse_yaml_block(lines: list[tuple[int, str]], index: int, indent: int) -> tuple[Any, int]:
+    """Parse a map or list block from a tiny YAML subset."""
+
+    if index >= len(lines):
+        return {}, index
+    if lines[index][1].startswith("- "):
+        return parse_yaml_list(lines, index, indent)
+    return parse_yaml_map(lines, index, indent)
+
+
+def parse_yaml_map(lines: list[tuple[int, str]], index: int, indent: int) -> tuple[dict[str, Any], int]:
+    """Parse simple YAML mapping lines."""
+
+    output: dict[str, Any] = {}
+    while index < len(lines):
+        current_indent, content = lines[index]
+        if current_indent < indent:
+            break
+        if current_indent > indent or content.startswith("- "):
+            break
+        key, separator, raw_value = content.partition(":")
+        if not separator:
+            return output, index + 1
+        key = parse_yaml_key(key)
+        value_text = raw_value.strip()
+        index += 1
+        if value_text:
+            output[key] = parse_yaml_scalar(value_text)
+            continue
+        if index < len(lines) and lines[index][0] > current_indent:
+            output[key], index = parse_yaml_block(lines, index, lines[index][0])
+        else:
+            output[key] = {}
+    return output, index
+
+
+def parse_yaml_list(lines: list[tuple[int, str]], index: int, indent: int) -> tuple[list[Any], int]:
+    """Parse simple YAML list lines."""
+
+    output: list[Any] = []
+    while index < len(lines):
+        current_indent, content = lines[index]
+        if current_indent < indent:
+            break
+        if current_indent != indent or not content.startswith("- "):
+            break
+        item_text = content[2:].strip()
+        index += 1
+        if not item_text:
+            if index < len(lines) and lines[index][0] > current_indent:
+                item, index = parse_yaml_block(lines, index, lines[index][0])
+            else:
+                item = {}
+            output.append(item)
+            continue
+        if ":" in item_text:
+            key, _, raw_value = item_text.partition(":")
+            item_dict: dict[str, Any] = {parse_yaml_key(key): parse_yaml_scalar(raw_value.strip()) if raw_value.strip() else {}}
+            if index < len(lines) and lines[index][0] > current_indent:
+                nested, index = parse_yaml_block(lines, index, lines[index][0])
+                if isinstance(nested, dict):
+                    item_dict.update(nested)
+                else:
+                    item_dict["_items"] = nested
+            output.append(item_dict)
+            continue
+        output.append(parse_yaml_scalar(item_text))
+    return output, index
+
+
+def parse_yaml_key(value: str) -> str:
+    """Parse a tiny YAML key token."""
+
+    return value.strip().strip('"').strip("'")
+
+
+def parse_yaml_scalar(value: str) -> Any:
+    """Parse scalar values from Apex's YAML subset."""
+
+    text = value.strip()
+    if text in {"", "null", "Null", "NULL", "~"}:
+        return None
+    if text == "[]":
+        return []
+    if text == "{}":
+        return {}
+    if text.lower() == "true":
+        return True
+    if text.lower() == "false":
+        return False
+    if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
+        return text[1:-1]
+    if re.fullmatch(r"-?\d+", text):
+        try:
+            return int(text)
+        except ValueError:
+            return text
+    return text
+
+
+def parse_review_file(path: Path) -> ReviewDoc:
+    """Parse structured review metadata from YAML/TOML frontmatter."""
+
+    if not path.exists():
+        return ReviewDoc("missing", "missing", "", {}, False, False, "medium", "none", "missing")
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    if text.startswith("---\n"):
+        end = text.find("\n---", 4)
+        if end == -1:
+            return ReviewDoc("invalid", "invalid", "", {}, False, True, "medium", "none", "invalid_frontmatter")
+        if yaml is not None:
+            try:
+                parsed = yaml.safe_load(text[4:end])
+            except Exception:
+                return ReviewDoc("invalid", "invalid", "", {}, False, True, "medium", "none", "frontmatter_parse_error")
+        else:
+            parsed = parse_yaml_frontmatter_subset(text[4:end])
+        if not isinstance(parsed, dict):
+            return ReviewDoc("invalid", "invalid", "", {}, False, True, "medium", "none", "invalid_schema")
+        return validate_review_doc(parsed, "yaml")
+    if text.startswith("+++\n"):
+        end = text.find("\n+++", 4)
+        if end == -1:
+            return ReviewDoc("invalid", "invalid", "", {}, False, True, "medium", "none", "invalid_frontmatter")
+        if tomllib is None:
+            return ReviewDoc("invalid", "invalid", "", {}, False, True, "medium", "none", "tomllib_unavailable")
+        try:
+            data = tomllib.loads(text[4:end])
+        except Exception:
+            return ReviewDoc("invalid", "invalid", "", {}, False, True, "medium", "none", "frontmatter_parse_error")
+        return validate_review_doc(data, "toml")
+
+    legacy_status = legacy_review_status(path)
+    legacy_validation = legacy_validation_status(path)
+    return ReviewDoc(
+        "ready" if legacy_status == "ready" else "pending",
+        legacy_validation if legacy_validation == "pass" else "missing",
+        "",
+        {},
+        False,
+        legacy_status == "issues",
+        "medium",
+        "legacy",
+        "migration_required",
+        legacy=True,
+        schema_format="legacy",
+    )
+
+
+def validate_review_doc(data: dict[str, Any], schema_format: str) -> ReviewDoc:
+    """Validate review frontmatter with conservative defaults."""
+
+    status = str(data.get("status", "pending")).strip().lower()
+    validation = str(data.get("validation", "missing")).strip().lower()
+    risk_level = str(data.get("risk_level", "medium")).strip().lower()
+    reviewer = data.get("reviewer")
+    reviewer_role = "none"
+    reviewer_id = ""
+    if isinstance(reviewer, dict):
+        reviewer_role = str(reviewer.get("role", "none")).strip().lower()
+        reviewer_id = str(reviewer.get("id", "")).strip()
+    implementer = data.get("implementer")
+    implementer_id = str(implementer.get("id", "")).strip() if isinstance(implementer, dict) else ""
+
+    allowed_status = {"pending", "ready", "blocked"}
+    allowed_validation = {"missing", "fail", "failed", "pass", "automated-pass"}
+    allowed_risk = {"low", "medium", "high"}
+    allowed_roles = {"none", "human", "independent-agent", "same-agent", "ci", "unknown"}
+    if status not in allowed_status:
+        return ReviewDoc("invalid", validation, "", {}, False, True, risk_level, reviewer_role, "invalid_status", reviewer_id=reviewer_id, implementer_id=implementer_id, schema_format=schema_format)
+    if validation not in allowed_validation:
+        return ReviewDoc(status, "invalid", "", {}, False, True, risk_level, reviewer_role, "invalid_validation", reviewer_id=reviewer_id, implementer_id=implementer_id, schema_format=schema_format)
+    if risk_level not in allowed_risk:
+        return ReviewDoc(status, validation, "", {}, False, True, risk_level, reviewer_role, "invalid_risk_level", reviewer_id=reviewer_id, implementer_id=implementer_id, schema_format=schema_format)
+    if reviewer_role not in allowed_roles:
+        return ReviewDoc(status, validation, "", {}, False, True, risk_level, reviewer_role, "invalid_reviewer_role", reviewer_id=reviewer_id, implementer_id=implementer_id, schema_format=schema_format)
+    if validation == "failed":
+        validation = "fail"
+
+    reviewed_diff_hash = str(data.get("reviewed_diff_hash", "")).strip()
+    reviewed_hashes = normalize_reviewed_hashes(data.get("reviewed_file_hashes") or data.get("changed_file_hashes"))
+    required_checks_ok = required_checks_pass(data.get("validation_evidence"))
+    open_blockers = has_open_blocking_findings(data.get("findings"))
+    if risk_level != "high" and reviewer_role not in {"human", "independent-agent", "ci"}:
+        open_blockers = True
+    if risk_level == "high" and reviewer_role not in {"human", "ci"}:
+        open_blockers = True
+    if reviewer_role == "same-agent" or (reviewer_id and implementer_id and reviewer_id == implementer_id):
+        open_blockers = True
+    return ReviewDoc(
+        status,
+        validation,
+        reviewed_diff_hash,
+        reviewed_hashes,
+        required_checks_ok,
+        open_blockers,
+        risk_level,
+        reviewer_role,
+        reviewer_id=reviewer_id,
+        implementer_id=implementer_id,
+        schema_format=schema_format,
+    )
+
+
+def normalize_reviewed_hashes(value: Any) -> dict[str, str]:
+    """Normalize reviewed file hash mapping."""
+
+    if not isinstance(value, dict):
+        return {}
+    output: dict[str, str] = {}
+    for key, item in value.items():
+        if isinstance(key, str) and isinstance(item, str):
+            output[key.replace("\\", "/")] = item
+    return output
+
+
+def required_checks_pass(value: Any) -> bool:
+    """Whether all declared required checks passed."""
+
+    if not isinstance(value, dict):
+        return False
+    checks = value.get("required_checks")
+    if not isinstance(checks, list) or not checks:
+        return False
+    for check in checks:
+        if not isinstance(check, dict) or check.get("exit_code") != 0:
+            return False
+    return True
+
+
+def has_open_blocking_findings(value: Any) -> bool:
+    """Whether structured findings contain open critical/warning items."""
+
+    if not isinstance(value, list):
+        return False
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        severity = str(item.get("severity", "")).strip().lower()
+        status = str(item.get("status", "open")).strip().lower()
+        if severity in {"critical", "warning"} and status == "open":
             return True
     return False
 
@@ -443,6 +1500,14 @@ def review_covers_current_code(repo_root: Path, slug: str, review_path: Path, co
     if not current_files:
         return True
 
+    review_doc = parse_review_file(review_path)
+    current_hashes = code_file_fingerprints(repo_root, current_files)
+    current_diff_hash = diff_hash_for_fingerprints(current_hashes)
+    if review_doc.reviewed_diff_hash:
+        return review_doc.reviewed_diff_hash == current_diff_hash
+    if review_doc.reviewed_hashes:
+        return current_files.issubset(set(review_doc.reviewed_hashes)) and all(current_hashes[path] == review_doc.reviewed_hashes.get(path) for path in current_files)
+
     state = read_loop_state(repo_root, slug)
     stored_hashes = state.get("changed_file_hashes")
     if isinstance(stored_hashes, dict) and stored_hashes:
@@ -463,6 +1528,13 @@ def review_covers_current_code(repo_root: Path, slug: str, review_path: Path, co
     return True
 
 
+def diff_hash_for_fingerprints(fingerprints: dict[str, str]) -> str:
+    """Stable hash for a set of reviewed file fingerprints."""
+
+    payload = json.dumps(fingerprints, sort_keys=True, separators=(",", ":"))
+    return f"sha256:{hashlib.sha256(payload.encode('utf-8')).hexdigest()}"
+
+
 def workflow_blocks(repo_root: Path) -> dict[str, str]:
     """Workflow-state blocks defined by the editable workflow document."""
 
@@ -479,19 +1551,22 @@ def workflow_blocks(repo_root: Path) -> dict[str, str]:
 def workflow_status(repo_root: Path, changed: list[str] | None = None) -> str:
     """Current workflow status inferred from loop artifacts."""
 
-    todo_path = newest_todo(repo_root)
-    if not todo_path:
+    if security_required(repo_root):
+        return "security_required"
+
+    task = active_task(repo_root)
+    if not task:
         return "no_task"
 
     changed_files = changed if changed is not None else git_changed_files(repo_root)
-    slug = safe_slug(todo_path.stem.removeprefix("todo+"), "task")
+    slug = task.slug
     review_path = repo_root / "tasks" / "reviews" / f"{slug}.md"
     status = review_status(review_path)
     validation = validation_status(review_path)
     code_changed = any(is_reviewable_code_path(Path(path)) for path in changed_files)
 
     if status == "ready":
-        if validation != "pass":
+        if validation not in {"pass", "automated-pass"}:
             return "validation_required"
         return "done" if review_covers_current_code(repo_root, slug, review_path, [path for path in changed_files if is_reviewable_code_path(Path(path))]) else "review_required"
     if status in {"pending", "issues"} or code_changed:
@@ -507,7 +1582,7 @@ def git_changed_files(repo_root: Path) -> list[str]:
     """Changed and untracked files without needing a HookContext instance."""
 
     names: set[str] = set()
-    for args in (["diff", "--name-only", "HEAD"], ["ls-files", "--others", "--exclude-standard"]):
+    for args in (["diff", "--name-only", "--diff-filter=ACMRT", "HEAD"], ["ls-files", "--others", "--exclude-standard"]):
         result = subprocess.run(
             ["git", *args],
             cwd=repo_root,
@@ -528,7 +1603,7 @@ def loop_state_phase(repo_root: Path, slug: str) -> str:
 
     state = read_loop_state(repo_root, slug)
     phase = state.get("phase")
-    if isinstance(phase, str) and phase in {"planning", "implementing", "review_required", "validation_required", "done"}:
+    if isinstance(phase, str) and phase in {"planning", "implementing", "security_required", "review_required", "validation_required", "done"}:
         return phase
     return ""
 
@@ -550,6 +1625,7 @@ def fallback_workflow_body(status: str) -> str:
         "no_task": "No active todo was found. Answer direct questions normally or create a todo before implementation.",
         "planning": "An active todo exists. Clarify scope and validation before changing code.",
         "implementing": "Implementation is in progress. Keep changes scoped and preserve user edits.",
+        "security_required": "A completed tool produced secret-like content. Remove it, rotate any real credential, and verify cleanup before completion.",
         "review_required": "Code changes require review before completion.",
         "validation_required": "Review is ready, but validation evidence is missing or failing.",
         "done": "Review and validation are complete.",
@@ -564,6 +1640,37 @@ def workflow_state_context(repo_root: Path, changed: list[str] | None = None) ->
     return f'<apex-workflow-state status="{state.status}" source="{state.source}">\n{state.body}\n</apex-workflow-state>'
 
 
+def compact_blockers(repo_root: Path, changed: list[str], task: ActiveTask | None) -> list[str]:
+    """Small blocker summary persisted before compaction."""
+
+    blockers: list[str] = []
+    code_changed = [path for path in changed if is_reviewable_code_path(Path(path))]
+    if security_required(repo_root):
+        blockers.append("security_required")
+    if task and task.ambiguous_reason:
+        blockers.append("ambiguous_active_task")
+    if code_changed and not task:
+        blockers.append("missing_active_task")
+    if task and code_changed:
+        review_path = task.review_path or repo_root / "tasks" / "reviews" / f"{task.slug}.md"
+        status = review_status(review_path)
+        validation = validation_status(review_path)
+        if status != "ready":
+            blockers.append(f"review_{status}")
+        elif validation not in {"pass", "automated-pass"}:
+            blockers.append(f"validation_{validation}")
+        elif not review_covers_current_code(repo_root, task.slug, review_path, code_changed):
+            blockers.append("stale_review_diff")
+    for raw_path in changed:
+        rel_path = Path(raw_path)
+        if not is_source_file(rel_path) or is_generated_exception(rel_path):
+            continue
+        absolute = repo_root / rel_path
+        if absolute.is_file() and count_effective_lines(absolute) > thresholds_for(rel_path).hard:
+            blockers.append(f"line_length:{rel_path.as_posix()}")
+    return blockers
+
+
 def update_loop_state(repo_root: Path, slug: str, todo_path: Path, review_path: Path, code_files: list[str], run_id: str, phase: str = "review_required") -> int:
     """Update loop state and return review attempts."""
 
@@ -575,18 +1682,125 @@ def update_loop_state(repo_root: Path, slug: str, todo_path: Path, review_path: 
     attempts = int(review.get("attempts", 0)) + 1
     state.update(
         {
+            "schema_version": 1,
             "version": 1,
+            "task_id": slug,
             "slug": slug,
+            "mode": state.get("mode") or "supervised",
             "phase": phase,
             "todo_path": todo_path.relative_to(repo_root).as_posix(),
+            "review_path": review_path.relative_to(repo_root).as_posix(),
             "changed_files": code_files,
             "changed_file_hashes": code_file_fingerprints(repo_root, code_files),
+            "continuation_count": int(state.get("continuation_count", 0) or 0),
+            "max_continuations": int(state.get("max_continuations", 0) or 0),
+            "created_review_request": bool(state.get("created_review_request", False)),
             "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         }
     )
     review.update({"required": True, "status": "pending", "attempts": attempts, "review_path": review_path.relative_to(repo_root).as_posix(), "run_id": run_id})
-    state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
+    write_json_object(state_path, state)
     return attempts
+
+
+def record_stop_blocker(repo_root: Path, slug: str, failure: StructuredFailure, diff_hash: str, stop_hook_active: bool = False) -> None:
+    """Record Stop blocker reason hash to avoid opaque repeated loops."""
+
+    state_path = loop_state_path(repo_root, slug)
+    with json_file_lock(state_path):
+        state = read_loop_state(repo_root, slug)
+        reason_hash = hashlib.sha256(f"{failure.guard}:{failure.reason}:{diff_hash}".encode("utf-8")).hexdigest()
+        previous_hash = state.get("last_block_reason_hash")
+        count = int(state.get("block_count_for_same_reason", 0)) + 1 if previous_hash == reason_hash else 1
+        continuation_count = int(state.get("continuation_count", 0) or 0)
+        if stop_hook_active:
+            continuation_count += 1
+        state.update(
+            {
+                "schema_version": 1,
+                "task_id": state.get("task_id") or slug,
+                "slug": slug,
+                "mode": state.get("mode") or "supervised",
+                "last_block_reason_hash": reason_hash,
+                "last_block_gate": failure.guard,
+                "last_diff_hash": diff_hash,
+                "block_count_for_same_reason": count,
+                "continuation_count": continuation_count,
+                "max_continuations": int(state.get("max_continuations", 0) or 0),
+                "created_review_request": bool(state.get("created_review_request", False)),
+                "updated_at": timestamp(),
+            }
+        )
+        write_json_object(state_path, state)
+
+
+def reset_stop_blocker(repo_root: Path, slug: str) -> None:
+    """Clear Stop blocker loop fields when blockers are gone."""
+
+    state_path = loop_state_path(repo_root, slug)
+    state = read_loop_state(repo_root, slug)
+    changed = False
+    for key in ("last_block_reason_hash", "last_block_gate", "last_diff_hash", "block_count_for_same_reason", "continuation_count"):
+        if key in state:
+            state.pop(key, None)
+            changed = True
+    if changed:
+        state["updated_at"] = timestamp()
+        write_json_object(state_path, state)
+
+
+def active_stop_blocker_message(repo_root: Path, slug: str) -> str:
+    """Instruction emitted while a Stop hook is already active."""
+
+    state = read_loop_state(repo_root, slug)
+    gate = str(state.get("last_block_gate", "")).strip()
+    reason_hash = str(state.get("last_block_reason_hash", "")).strip()
+    if not gate or not reason_hash:
+        return ""
+    count = int(state.get("block_count_for_same_reason", 1))
+    continuation_count = int(state.get("continuation_count", 0) or 0)
+    return (
+        f"Apex Stop gate is already active for unresolved {gate} "
+        f"(same blocker count: {count}, continuation count: {continuation_count}). End this turn as blocked / follow-up-required, not done; "
+        "do not create another review request or claim completion until the blocker is cleared."
+    )
+
+
+def record_active_stop_continuation(repo_root: Path, slug: str) -> None:
+    """Increment bounded Stop continuation counters for an already-recorded blocker."""
+
+    state_path = loop_state_path(repo_root, slug)
+    with json_file_lock(state_path):
+        state = read_loop_state(repo_root, slug)
+        if not state.get("last_block_reason_hash"):
+            return
+        state["schema_version"] = 1
+        state["task_id"] = state.get("task_id") or slug
+        state["slug"] = slug
+        state["continuation_count"] = int(state.get("continuation_count", 0) or 0) + 1
+        state["block_count_for_same_reason"] = int(state.get("block_count_for_same_reason", 1) or 1) + 1
+        state["max_continuations"] = int(state.get("max_continuations", 0) or 0)
+        state["updated_at"] = timestamp()
+        write_json_object(state_path, state)
+
+
+def mark_review_request_created(repo_root: Path, slug: str, review_path: Path) -> None:
+    """Persist that a Stop gate already created the review request."""
+
+    state_path = loop_state_path(repo_root, slug)
+    with json_file_lock(state_path):
+        state = read_loop_state(repo_root, slug)
+        state.update(
+            {
+                "schema_version": 1,
+                "task_id": state.get("task_id") or slug,
+                "slug": slug,
+                "created_review_request": True,
+                "review_path": review_path.relative_to(repo_root).as_posix(),
+                "updated_at": timestamp(),
+            }
+        )
+        write_json_object(state_path, state)
 
 
 def write_review_request(repo_root: Path, slug: str, todo_path: Path, review_path: Path, code_files: list[str], run_id: str) -> None:
@@ -594,7 +1808,38 @@ def write_review_request(repo_root: Path, slug: str, todo_path: Path, review_pat
 
     review_path.parent.mkdir(parents=True, exist_ok=True)
     files = "\n".join(f"- `{path}`" for path in code_files)
-    content = f"""# Review Request: {slug}
+    hashes = code_file_fingerprints(repo_root, code_files)
+    diff_hash = diff_hash_for_fingerprints(hashes)
+    hash_lines = "\n".join(f'  "{path}": "{digest}"' for path, digest in sorted(hashes.items()))
+    now = timestamp()
+    content = f"""---
+schema_version: 1
+task_id: "{slug}"
+slug: "{slug}"
+status: pending
+validation: missing
+reviewed_diff_hash: "{diff_hash}"
+risk_level: medium
+created_at: "{now}"
+updated_at: "{now}"
+reviewer:
+  id: ""
+  role: none
+  tool: ""
+implementer:
+  id: ""
+reviewed_file_hashes:
+{hash_lines}
+validation_evidence:
+  required_checks:
+    - name: tests
+      command: ""
+      exit_code: null
+      recorded_at: ""
+findings: []
+---
+
+# Review Request: {slug}
 
 > **Generated By**: {GENERATED_MARKER}
 > **Status**: Pending
@@ -611,15 +1856,11 @@ def write_review_request(repo_root: Path, slug: str, todo_path: Path, review_pat
 
 ## Completion Contract
 
-review 通过后，把本文件状态改为：
+review 通过后，把 frontmatter 里的 `status` 改为 `ready`。
 
-`> **Status**: Ready`
+验证通过后，把 `validation` 改为 `pass` 或 `automated-pass`，并把所有 required checks 的 `exit_code` 改为 `0`。
 
-验证通过后，在本文件记录：
-
-`> **Validation**: Pass`
-
-并在下方列出实际运行过的命令和结果摘要。
+同时在下方列出实际运行过的命令和结果摘要。
 
 若列出 Critical / Warning / blocker / P0 / P1 问题，修复后再次 review。
 """
@@ -637,9 +1878,77 @@ def unresolved_reviews(repo_root: Path) -> list[str]:
         status = review_status(path)
         if status != "ready":
             output.append(f"{path.relative_to(repo_root).as_posix()} ({status})")
-        elif validation_status(path) != "pass":
+        elif validation_status(path) not in {"pass", "automated-pass"}:
             output.append(f"{path.relative_to(repo_root).as_posix()} (validation-missing)")
     return output
+
+
+def migrate_review_file(repo_root: Path, path: Path) -> bool:
+    """Add YAML frontmatter to a legacy review file."""
+
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    if text.startswith(("+++\n", "---\n")):
+        return False
+    slug = path.stem
+    legacy_status = legacy_review_status(path)
+    legacy_validation = legacy_validation_status(path)
+    status = "ready" if legacy_status == "ready" and legacy_validation == "pass" else "pending"
+    if legacy_status == "issues":
+        status = "blocked"
+    validation = "pass" if legacy_validation == "pass" else "missing"
+    findings = ""
+    if legacy_status == "issues":
+        findings = """
+  - id: migrated-legacy-warning
+    severity: warning
+    status: open
+    summary: "Legacy review text contains blocker-like terms."
+"""
+    else:
+        findings = "[]\n"
+    now = timestamp()
+    frontmatter = f"""---
+schema_version: 1
+task_id: "{slug}"
+slug: "{slug}"
+status: {status}
+validation: {validation}
+risk_level: medium
+created_at: "{now}"
+updated_at: "{now}"
+migrated_legacy_review: true
+reviewer:
+  id: ""
+  role: unknown
+  tool: ""
+implementer:
+  id: ""
+validation_evidence:
+  required_checks:
+    - name: legacy
+      command: ""
+      exit_code: {0 if validation == "pass" else -1}
+      recorded_at: ""
+findings: {findings}---
+
+"""
+    path.write_text(frontmatter + text, encoding="utf-8", newline="\n")
+    return True
+
+
+def migrate_reviews(repo_root: Path) -> list[str]:
+    """Migrate legacy review files and return changed paths."""
+
+    review_dir = repo_root / "tasks" / "reviews"
+    if not review_dir.is_dir():
+        return []
+    changed: list[str] = []
+    for path in sorted(review_dir.glob("*.md")):
+        if migrate_review_file(repo_root, path):
+            changed.append(path.relative_to(repo_root).as_posix())
+    return changed
 
 
 def recent_lessons(repo_root: Path) -> list[str]:
@@ -666,5 +1975,11 @@ def emit_failure(context: HookContext, failure: StructuredFailure, stop_decision
     if stop_decision:
         print(json.dumps({"decision": "block", "reason": failure.message()}, ensure_ascii=False))
     else:
-        print(json.dumps(failure.to_dict(), ensure_ascii=False), file=sys.stderr)
+        payload = failure.to_dict()
+        if failure.event == "PostToolUse":
+            payload["hookSpecificOutput"] = {
+                "hookEventName": "PostToolUse",
+                "additionalContext": failure.message(),
+            }
+        print(json.dumps(payload, ensure_ascii=False), file=sys.stderr)
     return 2

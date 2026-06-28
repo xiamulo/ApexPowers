@@ -77,9 +77,11 @@ Required fields:
 9. Require the Stop review request gate before done:
    - review file exists under `tasks/reviews/`,
    - `code-reviewer` verdict is Ready or accepted by the user,
-   - `> **Status**: Ready`,
-   - `> **Validation**: Pass`,
-   - commands and results are summarized,
+   - structured review frontmatter has `status: ready`,
+   - `validation: pass` or `validation: automated-pass`,
+   - `reviewed_diff_hash` or `reviewed_file_hashes` matches the current code diff,
+   - required checks record `exit_code = 0`,
+   - reviewer role/id satisfies the risk-level independence rule,
    - no new code diff appears after the Ready review without another review pass.
 
 ## Conflict Policy

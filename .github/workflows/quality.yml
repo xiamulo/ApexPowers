@@ -1,0 +1,71 @@
+name: quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        if: hashFiles('package.json') != ''
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Node dependencies
+        if: hashFiles('package.json') != ''
+        run: npm ci
+
+      - name: Format check
+        if: hashFiles('package.json') != ''
+        run: npm run format:check --if-present
+
+      - name: Lint
+        if: hashFiles('package.json') != ''
+        run: npm run lint --if-present
+
+      - name: Typecheck
+        if: hashFiles('package.json') != ''
+        run: npm run typecheck --if-present
+
+      - name: Node tests
+        if: hashFiles('package.json') != ''
+        run: npm test --if-present
+
+      - name: Build
+        if: hashFiles('package.json') != ''
+        run: npm run build --if-present
+
+      - name: Compile hook sources
+        run: python -m compileall .codex/skills/apex-init-project-hooks/scripts tests
+
+      - name: Run hook tests
+        run: python -m unittest tests.test_apex_loop_hooks tests.apex_hooks.test_pre_tool_use_security tests.apex_hooks.test_post_tool_use_semantics tests.apex_hooks.test_stop_loop_safety
+
+      - name: Check Apex distribution
+        run: python scripts/check_apex_distribution.py --json
+
+      - name: Apex doctor
+        run: python .codex/skills/apex-doctor/scripts/apex_doctor.py . --json
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: gitleaks.toml

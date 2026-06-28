@@ -5,3 +5,4 @@ __pycache__/
 .env.*
 tasks/loops/failures.jsonl
 tasks/loops/**/failures.jsonl
+tasks/loops/.cache/

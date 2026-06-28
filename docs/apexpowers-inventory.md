@@ -12,6 +12,9 @@
 | `.gitignore` | 排除本地状态、缓存、凭据和 Python 生成文件。 |
 | `.codex-plugin/plugin.json` | Codex 薄 plugin manifest。只声明 skills 和界面元数据，不直接安装 hooks。 |
 | `.claude-plugin/plugin.json` | Claude Code 薄 plugin manifest。声明 Claude skills 与 command prompt wrappers，不直接安装 hooks。 |
+| `.github/workflows/quality.yml` | GitHub Actions quality workflow。运行 Python hook tests、compileall、distribution check、apex-doctor 和 gitleaks secret scan。 |
+| `.pre-commit-config.yaml` | 本地 pre-commit 配置。接入官方 `gitleaks` hook，作为提交前 secret 扫描层。 |
+| `gitleaks.toml` | Gitleaks 配置。使用默认规则，并允许测试/文档中的假 token fixtures。 |
 
 ## Apex 自有 Skills
 
@@ -52,7 +55,7 @@
 | `commands/apex-sync-agent-mirrors.toml` | host command prompt wrapper，引导从 `.agents` 重新生成 Codex / Claude mirrors。 |
 | `commands/apex-lean-review.toml` | host command prompt wrapper，引导过度工程审查。 |
 | `commands/apex-orchestrate-delivery.toml` | host command prompt wrapper，引导显式编排 worktree / issue / PR 级并行交付。 |
-| `scripts/check_apex_distribution.py` | 分发一致性检查。验证 plugin manifests、commands、portability 文档、platform-native 文档、lean skill 和 benchmark 方法。 |
+| `scripts/check_apex_distribution.py` | 分发一致性检查。验证 plugin manifests、commands、portability 文档、platform-native 文档、lean skill、benchmark 方法和 trust-critical artifact hashes。 |
 | `benchmarks/README.md` | ApexPowers 离线 benchmark 方法说明，明确不复用 Ponytail 结论。 |
 | `benchmarks/apex_distribution_benchmark.py` | 离线测量 distribution check、doctor、installer dry-run 和 route config render 的耗时。 |
 
@@ -81,9 +84,9 @@
 | `init_project_hooks.py` | 规划、安装、更新和卸载 hook runtime、host JSON、manifest、loop 状态目录；保护用户已有 hook。 |
 | `apex_loop.py` | hook runtime 命令入口。把当前目录加入 `sys.path` 后调用核心 dispatcher。 |
 | `apex_loop_core.py` | 兼容导出层。暴露 `HostConfigRenderer`、`RouteRegistry` 和 `main`。 |
-| `apex_loop_routes.py` | Route registry 与 host config 渲染源头。定义 SessionStart、UserPromptSubmit、PreToolUse、PostToolUse、Stop 路由。 |
-| `apex_loop_runtime.py` | 运行时 guard 实现。包含安全门禁、行数门禁、secret 内容检查、镜像漂移检查、review/validation gate。 |
-| `apex_loop_utils.py` | HookInput、HookContext、workflow 状态推导、review 文件读写、失败日志和辅助函数。 |
+| `apex_loop_routes.py` | Route registry 与 host config 渲染源头。定义 SessionStart、UserPromptSubmit、PreToolUse 分流、PostToolUse、PostToolBatch、PreCompact、Stop 路由。 |
+| `apex_loop_runtime.py` | 运行时 guard 实现。包含写前安全门禁、PostToolUse security-required 反馈、行数门禁、secret 内容检查、镜像漂移检查、PreCompact snapshot 和 review/validation gate。 |
+| `apex_loop_utils.py` | HookInput、HookContext、路径规范化、workflow 状态推导、active.json 任务选择、结构化 review 文件读写、guard cache、失败日志去重和辅助函数。 |
 
 ## Hook 模板与安装产物
 
@@ -96,8 +99,11 @@
 | `<codex-home>/hooks/apex_loop*.py` | Codex 侧 runtime 副本。 |
 | `<claude-home>/settings.json` | Claude Code host hook 配置，安装器合并 Apex 条目并保留用户 hook。 |
 | `<claude-home>/hooks/apex_loop*.py` | Claude Code 侧 runtime 副本。 |
-| `tasks/loops/workflow.md` | 可编辑 workflow 状态文档，定义 `[apex-state:no_task]`、`planning`、`implementing`、`review_required`、`validation_required`、`done`。 |
+| `tasks/loops/workflow.md` | 可编辑 workflow 状态文档，定义 `[apex-state:no_task]`、`planning`、`implementing`、`security_required`、`review_required`、`validation_required`、`done`。 |
 | `tasks/loops/.apex-manifest.json` | 项目侧 ownership manifest，记录 Apex 管理的文件、hash 和保护属性。 |
+| `tasks/loops/active.json` | 可选 active task 索引。并行任务时用 `owned_paths` 选择 review slug，避免绑定“最新 todo”。 |
+| `tasks/loops/security-required.json` | PostToolUse 发现已写入 secret-like 内容后的清理状态；存在时 Stop 阻塞完成。 |
+| `tasks/loops/session-snapshot.json` | PreCompact 生成的会话快照，保存 workflow、active task、diff hash、review path 和 blockers。 |
 | `<codex-home>/apex/manifest.json` | Codex host 侧 ownership manifest。 |
 | `<claude-home>/apex/manifest.json` | Claude host 侧 ownership manifest。 |
 
@@ -107,10 +113,10 @@
 | --- | --- |
 | `tasks/todo+apex-loop-hooks.md` | 当前 Apex loop hooks 改造计划，记录目标、非目标、架构、hook 规则、阶段计划和 DoD。 |
 | `tasks/todo+apex-ponytail-production.md` | 从 Ponytail 借鉴分发层做法的生产化计划，覆盖跨宿主、薄 manifest、lean review、平台原生清单、漂移测试和 benchmark 方法。 |
-| `tasks/reviews/apex-loop-hooks.md` | 对 active todo 的 review gate 文件。Stop gate 要求 `Status: Ready` 和 `Validation: Pass`。 |
+| `tasks/reviews/apex-loop-hooks.md` | 对 active todo 的 review gate 文件。Stop gate 读取结构化 frontmatter；新 review request 使用 YAML，旧 TOML 兼容读取。要求 `status: ready`、`validation: pass` / `"automated-pass"`、reviewed diff hash 匹配、required checks 通过、reviewer role/id 满足风险级别。 |
 | `tasks/research+trellis-apexpowers-opportunities.md` | 对 Trellis 方案的源码对照研究，记录 ApexPowers 可借鉴模块和不建议照搬的部分。 |
 | `tasks/lessons.md` | loop hooks 注入的近期经验记录来源。 |
-| `tasks/loops/apex-loop-hooks/state.json` | 机器可读 loop 状态，记录 phase、review attempts、changed files 和 hash。 |
+| `tasks/loops/apex-loop-hooks/state.json` | 机器可读 loop 状态，记录 phase、review attempts、changed files/hash、review request 创建状态、Stop blocker hash 和 continuation 计数。 |
 
 ## Vendored 前端 / 动画 / 测试 Skills
 

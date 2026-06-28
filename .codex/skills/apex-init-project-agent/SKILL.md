@@ -11,6 +11,8 @@ description: 初始化已有项目的项目级 AGENTS.md、CLAUDE.md 和 .claude
 
 项目根目录 `AGENTS.md` 是 Codex 稳定读取的核心入口，必须使用脚本里的 Codex 固定模板原文。它的主体必须等于当前 `CLAUDE.md` 固定模板去掉 `.claude/rules/ 入口（按需加载）` 后的内容；Codex 硬规则、验证要求、文件拆分阈值和安全边界追加在主体后面，用来替代 AGENTS.md 里的按需加载入口。不要替代、摘要或重写 `CLAUDE.md` 主体其他部分。
 
+根 `AGENTS.md` / `CLAUDE.md` 固定模板必须内置“契约式小任务 + 运行时结构化分解 + 证据化验收”工作流。该规则属于根级硬规则，不放到 `.claude/rules/` 才生效，也不得由模型在生成 rules 时自由发挥。修改该工作流时，必须同步更新 `scripts/init_project_agent.py` 中的 `CLAUDE_TEMPLATE`；如需 Codex 额外强调，再同步更新 `CODEX_RULE_APPENDIX`。模板中的 YAML contract 示例使用中文 key，例如 `任务ID`、`目标`、`范围`、`允许路径`、`禁止路径`、`验收`、`必跑检查`、`交付证据`、`需要审查`；如果未来接入脚本解析，这些 key 必须保持稳定。
+
 `AGENTS.md` 中追加的 `Codex 内联硬规则 / 项目专项硬规则` 下面的 API、Backend、Frontend 三个小节是唯一允许模型回填的 Codex 专项区块。生成或重写 `.claude/rules/api-design.md`、`.claude/rules/backend.md`、`.claude/rules/frontend.md` 后，必须分别把这三份文档中最有效、最硬性的规则压缩到对应小节，每组最多 10 行。只保留会直接影响代码结构、数据边界、错误处理、验证和安全的规则；不要搬运解释、背景或宽泛建议。
 
 项目根目录 `CLAUDE.md` 是 Claude Code 入口，必须使用脚本里的 Claude 固定模板原文，不要总结、改写、删减或重新组织。它保持现有 `.claude/rules/` 分层入口和 Claude 协作风格。

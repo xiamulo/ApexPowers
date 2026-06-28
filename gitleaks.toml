@@ -1,0 +1,17 @@
+title = "ApexPowers gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Documentation and test placeholders"
+paths = [
+  '''(^|/)tests/apex_hooks/fixtures/.*\.json$''',
+  '''(^|/)docs/.*\.md$''',
+  '''(^|/)tasks/reviews/.*\.md$'''
+]
+regexes = [
+  '''sk-[a-z]{26}[0-9]+''',
+  '''ghp_[a-z]{26}[0-9]+''',
+  '''AKIA[A-Z]{16}'''
+]

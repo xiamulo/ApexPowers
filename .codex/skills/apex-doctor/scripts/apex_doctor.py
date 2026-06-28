@@ -21,6 +21,7 @@ WORKFLOW_STATES = (
     "no_task",
     "planning",
     "implementing",
+    "security_required",
     "review_required",
     "validation_required",
     "done",

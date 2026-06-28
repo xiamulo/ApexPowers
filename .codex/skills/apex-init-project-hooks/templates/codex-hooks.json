@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/apex_loop.py session-start --host codex --route default",
+            "command": "py -3 \".codex/hooks/apex_loop.py\" session-start --host codex --route default",
             "timeout": 30
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/apex_loop.py user-prompt-submit --host codex --route default",
+            "command": "py -3 \".codex/hooks/apex_loop.py\" user-prompt-submit --host codex --route default",
             "timeout": 30
           }
         ]
@@ -24,45 +24,88 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Shell|PowerShell|Edit|Write|MultiEdit|apply_patch",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/apex_loop.py pre-tool-use --host codex --route safety",
+            "command": "py -3 \".codex/hooks/apex_loop.py\" pre-tool-use --host codex --route safety-write",
+            "timeout": 30
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit|apply_patch"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 \".codex/hooks/apex_loop.py\" pre-tool-use --host codex --route safety-read",
+            "timeout": 30
+          }
+        ],
+        "matcher": "Read|Grep|Glob|mcp__.*"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 \".codex/hooks/apex_loop.py\" pre-tool-use --host codex --route safety-shell",
+            "timeout": 30
+          }
+        ],
+        "matcher": "Bash|Shell|PowerShell"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 \".codex/hooks/apex_loop.py\" post-tool-use --host codex --route edit",
+            "timeout": 30
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit|apply_patch"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 \".codex/hooks/apex_loop.py\" post-tool-use --host codex --route bash",
+            "timeout": 30
+          }
+        ],
+        "matcher": "Bash|Shell|PowerShell"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 \".codex/hooks/apex_loop.py\" post-tool-use --host codex --route always",
             "timeout": 30
           }
         ]
       }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit|apply_patch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 .codex/hooks/apex_loop.py post-tool-use --host codex --route edit",
-            "timeout": 30
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|Shell|PowerShell",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 .codex/hooks/apex_loop.py post-tool-use --host codex --route bash",
-            "timeout": 30
-          }
-        ]
-      },
+    "PostToolBatch": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/apex_loop.py post-tool-use --host codex --route always",
+            "command": "py -3 \".codex/hooks/apex_loop.py\" post-tool-batch --host codex --route default",
             "timeout": 30
           }
         ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 \".codex/hooks/apex_loop.py\" pre-compact --host codex --route default",
+            "timeout": 30
+          }
+        ],
+        "matcher": "auto|manual"
       }
     ],
     "Stop": [
@@ -70,7 +113,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/apex_loop.py stop --host codex --route default",
+            "command": "py -3 \".codex/hooks/apex_loop.py\" stop --host codex --route default",
             "timeout": 30
           }
         ]

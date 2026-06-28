@@ -15,6 +15,7 @@ TOML_BEGIN_MARKER = f"# >>> apex-managed-hooks-begin ({GENERATED_MARKER}) >>>"
 TOML_END_MARKER = "# <<< apex-managed-hooks-end <<<"
 SOURCE_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".cs", ".vue", ".svelte"}
 FRONTEND_EXTENSIONS = {".tsx", ".jsx", ".vue", ".svelte"}
+SCRIPT_EXTENSIONS = {".ts", ".js"}
 BACKEND_EXTENSIONS = {".py", ".go", ".rs", ".java", ".cs"}
 SECRET_NAME_PATTERNS = (
     ".env",
@@ -74,15 +75,33 @@ class RouteRegistry:
             Route("UserPromptSubmit", "default", "user-prompt-submit", "user_prompt_submit"),
             Route(
                 "PreToolUse",
-                "safety",
+                "safety-write",
                 "pre-tool-use",
                 "pre_tool_use",
-                "Bash|Shell|PowerShell|Edit|Write|MultiEdit|apply_patch",
-                "Bash|Shell|PowerShell|Edit|Write|MultiEdit",
+                "Edit|Write|MultiEdit|apply_patch",
+                "Edit|Write|MultiEdit",
+            ),
+            Route(
+                "PreToolUse",
+                "safety-read",
+                "pre-tool-use",
+                "pre_tool_use",
+                "Read|Grep|Glob|mcp__.*",
+                "Read|Grep|Glob|mcp__.*",
+            ),
+            Route(
+                "PreToolUse",
+                "safety-shell",
+                "pre-tool-use",
+                "pre_tool_use",
+                "Bash|Shell|PowerShell",
+                "Bash|Shell|PowerShell",
             ),
             Route("PostToolUse", "edit", "post-tool-use", "post_tool_use", "Edit|Write|MultiEdit|apply_patch", "Edit|Write|MultiEdit"),
             Route("PostToolUse", "bash", "post-tool-use", "post_tool_use", "Bash|Shell|PowerShell", "Bash|Shell|PowerShell"),
             Route("PostToolUse", "always", "post-tool-use", "post_tool_use"),
+            Route("PostToolBatch", "default", "post-tool-batch", "post_tool_use"),
+            Route("PreCompact", "default", "pre-compact", "pre_compact", "auto|manual", "auto|manual"),
             Route("Stop", "default", "stop", "stop"),
         ]
 
@@ -177,11 +196,14 @@ class StructuredFailure:
     failure_class: str
     run_id: str
     action: str = "block"
+    event: str = ""
+    effect: str = ""
+    subject: str = ""
 
     def to_dict(self) -> dict[str, str]:
         """JSON-serializable representation."""
 
-        return {
+        payload = {
             "guard": self.guard,
             "action": self.action,
             "reason": self.reason,
@@ -189,6 +211,13 @@ class StructuredFailure:
             "failure_class": self.failure_class,
             "run_id": self.run_id,
         }
+        if self.event:
+            payload["event"] = self.event
+        if self.effect:
+            payload["effect"] = self.effect
+        if self.subject:
+            payload["subject"] = self.subject
+        return payload
 
     def message(self) -> str:
         """Human-readable one-line summary."""

@@ -12,22 +12,37 @@ from pathlib import Path
 from apex_loop_routes import HostConfigRenderer, RouteRegistry, StructuredFailure
 from apex_loop_utils import (
     HookContext,
-    context_paths_or_changed,
+    active_task,
+    active_stop_blocker_message,
+    cached_guard_result,
+    context_paths_diff_aware,
     count_effective_lines,
+    count_effective_lines_at_head,
     emit_failure,
     emit_warning_or_log,
+    extract_pending_write_text,
+    file_sha256,
     is_generated_exception,
     is_reviewable_code_path,
     is_secret_path,
     is_source_file,
-    newest_todo,
+    mark_security_required,
+    mark_review_request_created,
+    mentions_secret_path,
+    migrate_reviews,
+    parse_review_file,
     recent_lessons,
+    record_active_stop_continuation,
+    record_stop_blocker,
     review_covers_current_code,
+    security_required_failure,
+    reset_stop_blocker,
     resolve_workflow_state,
     review_status,
-    safe_slug,
+    should_skip_generated_or_large,
     thresholds_for,
     unresolved_reviews,
+    update_guard_cache,
     update_loop_state,
     validation_status,
     workflow_state_context,
@@ -62,14 +77,50 @@ class SecurityGuard:
                 )
 
         for path_text in context.hook_input.file_paths():
-            rel_path = context.rel_path(path_text)
-            if rel_path and is_secret_path(rel_path):
+            normalized = context.normalize_path(path_text)
+            if not normalized.inside_repo:
+                return StructuredFailure(
+                    "PathGuard",
+                    f"路径不在当前仓库内或包含不可安全解析的 traversal: {path_text}",
+                    "只读取或写入仓库内路径；如确需访问外部路径，让用户手动确认后改用显式流程。",
+                    "security_risk",
+                    context.run_id,
+                    event="PreToolUse",
+                    subject=path_text,
+                )
+            if normalized.relative and is_secret_path(normalized.relative):
                 return StructuredFailure(
                     "SecretPathGuard",
-                    f"疑似 secrets 路径被访问: {rel_path.as_posix()}",
+                    f"疑似 secrets 路径被访问: {normalized.relative.as_posix()}",
                     "不要读取或写入 secrets；改用 .env.example、占位变量或让用户手动处理。",
                     "security_risk",
                     context.run_id,
+                    event="PreToolUse",
+                    subject=normalized.relative.as_posix(),
+                )
+            if mentions_secret_path(path_text):
+                return StructuredFailure(
+                    "SecretPathGuard",
+                    f"路径模式疑似覆盖 secrets: {path_text}",
+                    "不要用 Read/Grep/Glob/MCP 工具访问 secrets；改用 .env.example 或让用户手动处理。",
+                    "security_risk",
+                    context.run_id,
+                    event="PreToolUse",
+                    subject=path_text,
+                )
+
+        for pending in extract_pending_write_text(context.hook_input.payload, context.host):
+            if SecretContentGuard.contains_secret(pending.text):
+                return StructuredFailure(
+                    "SecretContentGuard",
+                    f"{pending.source} 疑似包含 token、API key 或 private key，已在工具执行前阻断。",
+                    "不要把真实密钥写入仓库；改用占位符、环境变量名、密钥管理器或 .env.example。",
+                    "security_risk",
+                    context.run_id,
+                    action="deny",
+                    event="PreToolUse",
+                    effect="tool_prevented",
+                    subject=pending.source,
                 )
         return None
 
@@ -77,7 +128,7 @@ class SecurityGuard:
 class LineLengthGuard:
     """PostToolUse file size checks using effective code lines."""
 
-    def check(self, context: HookContext, paths: list[Path]) -> list[StructuredFailure]:
+    def check(self, context: HookContext, paths: list[Path], block_hard_limit: bool) -> list[StructuredFailure]:
         """Check changed source files and return warnings or blocks."""
 
         findings: list[StructuredFailure] = []
@@ -88,23 +139,31 @@ class LineLengthGuard:
             if not absolute.is_file():
                 continue
             lines = count_effective_lines(absolute)
-            warning, hard, target = thresholds_for(rel_path)
-            if lines > hard:
+            threshold = thresholds_for(rel_path)
+            if lines > threshold.hard:
+                previous_lines = count_effective_lines_at_head(context.repo_root, rel_path) if block_hard_limit else None
+                should_block = block_hard_limit and (previous_lines is None or previous_lines <= threshold.hard)
+                fix = f"{threshold.split_hint} 目标区间 {threshold.target}。"
+                if not block_hard_limit:
+                    fix += " 当前为 PostToolUse 提醒；Stop gate 会阻塞该问题。"
+                elif previous_lines is not None and previous_lines > threshold.hard:
+                    fix += f" 该文件在 HEAD 已有 {previous_lines} 有效行；本次作为 warning 记录，但 review 仍需关注。"
                 findings.append(
                     StructuredFailure(
                         "LineLengthGuard",
-                        f"{rel_path.as_posix()} 有效代码行 {lines}，超过硬上限 {hard}。",
-                        f"拆分到子模块、helper、types、constants 或组件；目标区间 {target}。",
+                        f"{rel_path.as_posix()} ({threshold.category}) 有效代码行 {lines}，超过硬上限 {threshold.hard}。",
+                        fix,
                         "quality_gate",
                         context.run_id,
+                        action="block" if should_block else "warn",
                     )
                 )
-            elif lines > warning:
+            elif lines > threshold.warning:
                 findings.append(
                     StructuredFailure(
                         "LineLengthGuard",
-                        f"{rel_path.as_posix()} 有效代码行 {lines}，超过强提醒线 {warning}。",
-                        f"评估拆分；目标区间 {target}，超过 {hard} 会阻塞。",
+                        f"{rel_path.as_posix()} ({threshold.category}) 有效代码行 {lines}，超过强提醒线 {threshold.warning}。",
+                        f"评估分拆；{threshold.split_hint} 目标区间 {threshold.target}，超过 {threshold.hard} 会在 Stop gate 阻塞。",
                         "quality_gate",
                         context.run_id,
                         action="warn",
@@ -124,25 +183,43 @@ class SecretContentGuard:
         re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{20,}\b"),
     ]
 
+    @classmethod
+    def contains_secret(cls, text: str) -> bool:
+        """Whether text contains secret-like content."""
+
+        return any(pattern.search(text) for pattern in cls._secret_patterns)
+
     def check(self, context: HookContext, paths: list[Path]) -> StructuredFailure | None:
-        """Return a blocking finding when changed content looks secret-like."""
+        """Return a follow-up finding when changed content looks secret-like."""
 
         for rel_path in paths:
             absolute = context.absolute(rel_path)
             if not absolute.is_file() or is_secret_path(rel_path):
                 continue
+            if should_skip_generated_or_large(rel_path, absolute):
+                continue
+            digest = file_sha256(absolute)
+            cached = cached_guard_result(context.repo_root, "SecretContentGuard", rel_path, digest)
+            if cached == "clean":
+                continue
             try:
                 text = absolute.read_text(encoding="utf-8", errors="ignore")[:200_000]
             except OSError:
                 continue
-            if any(pattern.search(text) for pattern in self._secret_patterns):
+            if self.contains_secret(text):
+                update_guard_cache(context.repo_root, "SecretContentGuard", rel_path, digest, "secret", absolute)
                 return StructuredFailure(
                     "SecretContentGuard",
                     f"{rel_path.as_posix()} 疑似包含 token、API key 或 private key。",
-                    "移除真实密钥，改用占位符、环境变量名或 .env.example。",
+                    "PostToolUse 无法撤销已发生写入；请立即移除真实密钥，改用占位符、环境变量名或 .env.example，然后重新验证。",
                     "security_risk",
                     context.run_id,
+                    action="feedback_block",
+                    event="PostToolUse",
+                    effect="tool_already_ran_followup_required",
+                    subject=rel_path.as_posix(),
                 )
+            update_guard_cache(context.repo_root, "SecretContentGuard", rel_path, digest, "clean", absolute)
         return None
 
 
@@ -183,30 +260,74 @@ class ReviewGate:
         code_files = [path for path in context.changed_files() if is_reviewable_code_path(Path(path))]
         if not code_files:
             return None
-        todo_path = newest_todo(context.repo_root)
-        if not todo_path:
+        task = active_task(context.repo_root)
+        if task and task.ambiguous_reason:
+            return StructuredFailure(
+                "ReviewGate",
+                task.ambiguous_reason,
+                "拆分当前 diff，或在 tasks/loops/active.json 中保留唯一匹配的 owned_paths/task_id 后再完成。",
+                "ambiguous_task",
+                context.run_id,
+            )
+        if not task:
+            tasks_dir = context.repo_root / "tasks"
+            todos = sorted(tasks_dir.glob("todo+*.md")) if tasks_dir.is_dir() else []
+            if todos:
+                return StructuredFailure(
+                    "ReviewGate",
+                    f"ambiguous_task: 存在 {len(todos)} 个 todo 候选，但没有 active loop state，无法安全绑定当前代码 diff。",
+                    "先明确当前任务：保留一个 active todo，或运行/恢复对应 tasks/loops/<slug>/state.json 后再完成。",
+                    "ambiguous_task",
+                    context.run_id,
+                )
             return None
 
-        slug = safe_slug(todo_path.stem.removeprefix("todo+"), "task")
-        review_path = context.repo_root / "tasks" / "reviews" / f"{slug}.md"
+        slug = task.slug
+        todo_path = task.todo_path
+        review_path = task.review_path or context.repo_root / "tasks" / "reviews" / f"{slug}.md"
         status = review_status(review_path)
+        review_doc = parse_review_file(review_path)
+        if review_doc.invalid_reason and review_doc.invalid_reason not in {"missing"}:
+            return StructuredFailure(
+                "ReviewGate",
+                f"{slug} review 状态不可用: {review_doc.invalid_reason}。",
+                f"运行 `python .codex/skills/apex-init-project-hooks/scripts/apex_loop.py migrate-reviews --repo-root .` 或给 {review_path.relative_to(context.repo_root).as_posix()} 添加结构化 YAML frontmatter。",
+                "quality_gate",
+                context.run_id,
+            )
         if status == "ready":
             validation = validation_status(review_path)
-            if validation == "pass":
+            if validation in {"pass", "automated-pass"}:
+                if review_doc.open_blockers:
+                    return StructuredFailure(
+                        "ReviewGate",
+                        f"{slug} review frontmatter 仍有开放 blocker，或 reviewer.role 不满足 risk_level={review_doc.risk_level} 的要求。",
+                        f"修正 {review_path.relative_to(context.repo_root).as_posix()} 的 findings/reviewer.role；普通风险用 human、independent-agent 或 ci，高风险用 human 或 ci。",
+                        "quality_gate",
+                        context.run_id,
+                    )
+                if not review_doc.required_checks_ok:
+                    return StructuredFailure(
+                        "ValidationGate",
+                        f"{slug} validation 为 pass，但 required_checks 未全部记录 exit_code=0。",
+                        f"在 {review_path.relative_to(context.repo_root).as_posix()} 的 frontmatter 中记录实际验证命令和 exit_code=0。",
+                        "missing_artifact",
+                        context.run_id,
+                    )
                 if review_covers_current_code(context.repo_root, slug, review_path, code_files):
                     return None
                 attempts = update_loop_state(context.repo_root, slug, todo_path, review_path, code_files, context.run_id)
                 return StructuredFailure(
                     "ReviewGate",
                     f"{slug} review 已 Ready 且验证通过，但当前代码 diff 和已审查快照不一致。",
-                    f"重新审查当前 diff，并更新 {review_path.relative_to(context.repo_root).as_posix()}；通过后再次写入 `> **Status**: Ready` 和 `> **Validation**: Pass`。当前尝试次数: {attempts}。",
+                    f"重新审查当前 diff，并更新 {review_path.relative_to(context.repo_root).as_posix()} frontmatter 的 reviewed_file_hashes、status 和 validation。当前尝试次数: {attempts}。",
                     "quality_gate",
                     context.run_id,
                 )
             return StructuredFailure(
                 "ValidationGate",
                 f"{slug} review 已 Ready，但缺少通过的验证证据。" if validation == "missing" else f"{slug} review 已 Ready，但验证状态为 {validation}。",
-                f"运行必要的 lint，并在 {review_path.relative_to(context.repo_root).as_posix()} 写入 `> **Validation**: Pass` 和命令结果摘要。",
+                f"运行必要验证，并在 {review_path.relative_to(context.repo_root).as_posix()} frontmatter 写入 validation=pass 与 required_checks exit_code=0。",
                 "missing_artifact" if validation == "missing" else "quality_gate",
                 context.run_id,
             )
@@ -214,11 +335,12 @@ class ReviewGate:
         attempts = update_loop_state(context.repo_root, slug, todo_path, review_path, code_files, context.run_id)
         if status == "missing":
             write_review_request(context.repo_root, slug, todo_path, review_path, code_files, context.run_id)
+            mark_review_request_created(context.repo_root, slug, review_path)
         reason = self._reason(slug, status, attempts)
         return StructuredFailure(
             "ReviewGate",
             reason,
-            f"审查并更新 {review_path.relative_to(context.repo_root).as_posix()}，通过时写入 `> **Status**: Ready` 和 `> **Validation**: Pass`。",
+            f"审查并更新 {review_path.relative_to(context.repo_root).as_posix()} frontmatter；通过时设置 status=ready、validation=pass，并记录 required_checks exit_code=0。",
             "missing_artifact" if status == "missing" else "quality_gate",
             context.run_id,
         )
@@ -229,7 +351,7 @@ class ReviewGate:
         if attempts >= 3:
             return f"{slug} review gate 连续阻塞 {attempts} 次，需要人工介入或明确降级。"
         if status == "issues":
-            return f"{slug} review 文件仍包含 Critical / Warning / blocker 信号。"
+            return f"{slug} review 文件仍包含 Critical / Warning / blocker 信号，或 reviewer.role 不满足 risk_level 要求。"
         return f"{slug} 有代码 diff，但还没有通过 code-reviewer review。"
 
 
@@ -305,36 +427,103 @@ class ApexLoopRuntime:
         """Run safety checks before tool execution."""
 
         failure = self._security.run(context)
-        return emit_failure(context, failure) if failure else 0
+        if not failure:
+            return 0
+        context.write_failure(failure)
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "permissionDecision": "deny",
+                        "permissionDecisionReason": failure.message(),
+                    }
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 2
 
     def post_tool_use(self, context: HookContext) -> int:
-        """Run edit checks and advisory observers after tool execution."""
+        """Run lightweight checks on files reported by the edit hook."""
 
-        paths = context_paths_or_changed(context)
-        secret_failure = self._secret_content.check(context, paths)
+        paths = context_paths_diff_aware(context, fallback_to_changed=True)
+        secret_failure = self._secret_content.check(context, paths) if paths else None
         if secret_failure:
+            mark_security_required(context.repo_root, secret_failure, context.run_id)
             return emit_failure(context, secret_failure)
-        findings = self._line_lengths.check(context, paths)
+        findings = self._line_lengths.check(context, paths, block_hard_limit=False) if paths else []
         findings.extend(self._mirror_drift.check(context, block=False))
         for finding in findings:
             emit_warning_or_log(context, finding)
-        blockers = [finding for finding in findings if finding.action == "block"]
-        return emit_failure(context, blockers[0]) if blockers else 0
+        return 0
+
+    def pre_compact(self, context: HookContext) -> int:
+        """Persist compact-safe loop context before host compaction."""
+
+        snapshot_path = context.write_session_snapshot()
+        rel_path = snapshot_path.relative_to(context.repo_root).as_posix()
+        payload = {
+            "hookSpecificOutput": {
+                "hookEventName": "PreCompact",
+                "additionalContext": f"Apex session snapshot saved at {rel_path}. Restore workflow/review status from this file after compaction.",
+            }
+        }
+        print(json.dumps(payload, ensure_ascii=False))
+        return 0
 
     def stop(self, context: HookContext) -> int:
         """Run completion gates."""
 
+        task = active_task(context.repo_root)
+        slug = task.slug if task and not task.ambiguous_reason else "session"
+        if context.hook_input.payload.get("stop_hook_active") is True:
+            diff_hash = context.current_diff_hash(context.changed_files())
+            security_failure = security_required_failure(context.repo_root, context.run_id)
+            if security_failure:
+                record_stop_blocker(context.repo_root, slug, security_failure, diff_hash, stop_hook_active=True)
+            else:
+                drift = [finding for finding in self._mirror_drift.check(context, block=True) if finding.action == "block"]
+                if drift:
+                    record_stop_blocker(context.repo_root, slug, drift[0], diff_hash, stop_hook_active=True)
+                else:
+                    changed_paths = [Path(path) for path in context.changed_files()]
+                    line_blockers = [finding for finding in self._line_lengths.check(context, changed_paths, block_hard_limit=True) if finding.action == "block"]
+                    if line_blockers:
+                        record_stop_blocker(context.repo_root, slug, line_blockers[0], diff_hash, stop_hook_active=True)
+                    else:
+                        record_active_stop_continuation(context.repo_root, slug)
+            message = active_stop_blocker_message(context.repo_root, slug)
+            if message:
+                print(json.dumps({"decision": "allow", "status": "blocked", "reason": message}, ensure_ascii=False))
+            return 0
+        diff_hash = context.current_diff_hash(context.changed_files())
+        security_failure = security_required_failure(context.repo_root, context.run_id)
+        if security_failure:
+            record_stop_blocker(context.repo_root, slug, security_failure, diff_hash)
+            return emit_failure(context, security_failure, stop_decision=True)
         drift = [finding for finding in self._mirror_drift.check(context, block=True) if finding.action == "block"]
         if drift:
+            record_stop_blocker(context.repo_root, slug, drift[0], diff_hash)
             return emit_failure(context, drift[0], stop_decision=True)
+        changed_paths = [Path(path) for path in context.changed_files()]
+        line_blockers = [finding for finding in self._line_lengths.check(context, changed_paths, block_hard_limit=True) if finding.action == "block"]
+        if line_blockers:
+            record_stop_blocker(context.repo_root, slug, line_blockers[0], diff_hash)
+            return emit_failure(context, line_blockers[0], stop_decision=True)
         failure = self._review_gate.run(context)
-        return emit_failure(context, failure, stop_decision=True) if failure else 0
+        if failure:
+            record_stop_blocker(context.repo_root, slug, failure, diff_hash)
+            return emit_failure(context, failure, stop_decision=True)
+        if task and not task.ambiguous_reason:
+            reset_stop_blocker(context.repo_root, task.slug)
+        return 0
 
     def check_line_length(self, context: HookContext, paths: list[str]) -> int:
         """Manual line-length check command."""
 
         rel_paths = [context.rel_path(path) for path in paths] if paths else [Path(path) for path in context.changed_files()]
-        findings = self._line_lengths.check(context, [path for path in rel_paths if path])
+        findings = self._line_lengths.check(context, [path for path in rel_paths if path], block_hard_limit=True)
         for finding in findings:
             emit_warning_or_log(context, finding)
         return 2 if any(finding.action == "block" for finding in findings) else 0
@@ -346,6 +535,13 @@ class ApexLoopRuntime:
         for finding in findings:
             emit_warning_or_log(context, finding)
         return 2 if findings else 0
+
+    def migrate_reviews(self, context: HookContext) -> int:
+        """Migrate legacy review files to structured frontmatter."""
+
+        changed = migrate_reviews(context.repo_root)
+        print(json.dumps({"migrated": changed}, ensure_ascii=False, indent=2))
+        return 0
 
 
 def prompt_hint(prompt: str) -> str:
@@ -368,7 +564,18 @@ def parse_args() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(description="ApexPowers loop hook runtime.")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    hook_commands = ["session-start", "user-prompt-submit", "pre-tool-use", "post-tool-use", "stop", "task-completed", "check-agent-mirrors"]
+    hook_commands = [
+        "session-start",
+        "user-prompt-submit",
+        "pre-tool-use",
+        "post-tool-use",
+        "post-tool-batch",
+        "pre-compact",
+        "stop",
+        "task-completed",
+        "check-agent-mirrors",
+        "migrate-reviews",
+    ]
     for command in hook_commands:
         subparser = subparsers.add_parser(command)
         add_common_hook_args(subparser)
@@ -411,9 +618,12 @@ def main() -> int:
         "user-prompt-submit": runtime.user_prompt_submit,
         "pre-tool-use": runtime.pre_tool_use,
         "post-tool-use": runtime.post_tool_use,
+        "post-tool-batch": runtime.post_tool_use,
+        "pre-compact": runtime.pre_compact,
         "stop": runtime.stop,
         "task-completed": runtime.stop,
         "check-agent-mirrors": runtime.check_agent_mirrors,
+        "migrate-reviews": runtime.migrate_reviews,
     }
     if args.command == "check-line-length":
         return runtime.check_line_length(context, args.paths)

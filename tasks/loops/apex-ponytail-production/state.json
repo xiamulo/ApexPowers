@@ -1,34 +1,36 @@
 {
-  "review": {
-    "required": true,
-    "status": "ready",
-    "attempts": 4,
-    "review_path": "tasks/reviews/apex-ponytail-production.md",
-    "run_id": "019efe21-1b4e-7813-bd1d-a7aa0ea35fe2"
-  },
-  "version": 1,
-  "slug": "apex-ponytail-production",
-  "todo_path": "tasks/todo+apex-ponytail-production.md",
-  "changed_files": [
-    ".codex-plugin/profiles/core/skills/apex-init-project-code/SKILL.md",
-    ".codex/skills/apex-init-project-code/SKILL.md",
-    ".codex/skills/apex-init-project-file/SKILL.md",
-    ".codex/skills/apex-init-project-file/agents/openai.yaml",
-    ".codex/skills/apex-init-project-file/scripts/init_agents_md.py",
-    "docs/apexpowers-inventory.md",
-    "docs/apexpowers-skills-agents-hooks.md",
-    "tests/test_init_agents_md.py"
-  ],
-  "updated_at": "2026-06-26T09:25:00+0800",
-  "phase": "validation_passed",
+  "block_count_for_same_reason": 7,
   "changed_file_hashes": {
-    ".codex-plugin/profiles/core/skills/apex-init-project-code/SKILL.md": "sha256:ed516f3943ac048e0eb2e60e70ac307377bf2636b7b896535469e9ff26a31f42",
-    ".codex/skills/apex-init-project-code/SKILL.md": "sha256:712957e42574605375a681ff1da2d7a2fc7ae7a4d2bfed3ca3eab762bd281690",
-    ".codex/skills/apex-init-project-file/SKILL.md": "sha256:9713e10e315cd250b7064bef1d50c240f52a43a992266072754cb44b6bd5b9fa",
-    ".codex/skills/apex-init-project-file/agents/openai.yaml": "sha256:50d0c368eff78e8e0c14c4daf5d0f4edebac3da49c6f4f6add7e0489735895c8",
-    ".codex/skills/apex-init-project-file/scripts/init_agents_md.py": "sha256:baa1dc08bc539ca46d865f7d12217be7b538ec80581694d80965b34f550a0220",
-    "docs/apexpowers-inventory.md": "sha256:e857afbfb6dc65717d803d5f2bcd570b45cfd91fcd03f0f5aea577c0a4cf32cd",
-    "docs/apexpowers-skills-agents-hooks.md": "sha256:a07303ee7f2f1e8da71dd83efc561c96dd7d0b07d0abe4f63cd27544a1c81876",
-    "tests/test_init_agents_md.py": "sha256:fda228f271a2c425f16f75bae18ae8f883681565522306ced7176dc8e31a7bae"
-  }
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_routes.py": "sha256:96dfee2bf0c1c88e13a776d6b66291acfc281cb6b970c9b86d8a152ca29b9d43",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_runtime.py": "sha256:8567f6e4dd679213b11a807d627eba8f665022828fe81db7f518bd68903afb0a",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_utils.py": "sha256:03b4fde9b48c1e9e7cd00ee602e2d9df63da80a38f0d0d57caa0aee25e3f6859",
+    "tests/test_apex_loop_hooks.py": "sha256:9a0959d526bdcf048c1d5a854f6669ba95e679bc006fb76273a8a1e4454cafd7"
+  },
+  "changed_files": [
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_routes.py",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_runtime.py",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_utils.py",
+    "tests/test_apex_loop_hooks.py"
+  ],
+  "continuation_count": 0,
+  "created_review_request": false,
+  "last_block_gate": "SecretContentGuard",
+  "last_block_reason_hash": "267fc217ed70d6f24d34b95916a9b7a4b25261a691d7cfaaf62f09906b701bc7",
+  "last_diff_hash": "03c78532f3da778b400023c267ea15e4f604ba8441860182b0824655f0ab208d",
+  "max_continuations": 0,
+  "mode": "supervised",
+  "phase": "review_required",
+  "review": {
+    "attempts": 5,
+    "required": true,
+    "review_path": "tasks/reviews/apex-ponytail-production.md",
+    "run_id": "019f098a-39cf-7e01-89b0-d7efe539e22d",
+    "status": "pending"
+  },
+  "schema_version": 1,
+  "slug": "apex-ponytail-production",
+  "task_id": "apex-ponytail-production",
+  "todo_path": "tasks/todo+apex-ponytail-production.md",
+  "updated_at": "2026-06-28T08:56:13+0800",
+  "version": 1
 }
