@@ -1,36 +1,31 @@
 {
-  "block_count_for_same_reason": 7,
   "changed_file_hashes": {
-    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_routes.py": "sha256:96dfee2bf0c1c88e13a776d6b66291acfc281cb6b970c9b86d8a152ca29b9d43",
-    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_runtime.py": "sha256:8567f6e4dd679213b11a807d627eba8f665022828fe81db7f518bd68903afb0a",
-    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_utils.py": "sha256:03b4fde9b48c1e9e7cd00ee602e2d9df63da80a38f0d0d57caa0aee25e3f6859",
-    "tests/test_apex_loop_hooks.py": "sha256:9a0959d526bdcf048c1d5a854f6669ba95e679bc006fb76273a8a1e4454cafd7"
+    "docs/apex-loop-hook-routes.md": "sha256:23c7edc5a376335c4bf3ca82c22d9b7dc49a8124f5b0e364c738c83b7025bf66",
+    "docs/subagent-hooks-contract-evidence.md": "sha256:d43a3d33b6bff5ed042d8969acfa9ca950dbc587e5a293d948ef4e91b13efef4",
+    "docs/trellis-inspired-apex-improvement-plan.md": "sha256:e3c5e92fa56453f92ae0181b6b5519782908adfbad548f757a80f2961a9949a0",
+    "tasks/loops/session-snapshot.json": "sha256:992c6833dc5e03f9a959ae44883eefdbc6d9771f2a70ca8bda04134061aa39fd"
   },
   "changed_files": [
-    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_routes.py",
-    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_runtime.py",
-    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_utils.py",
-    "tests/test_apex_loop_hooks.py"
+    "docs/apex-loop-hook-routes.md",
+    "docs/subagent-hooks-contract-evidence.md",
+    "docs/trellis-inspired-apex-improvement-plan.md",
+    "tasks/loops/session-snapshot.json"
   ],
-  "continuation_count": 0,
   "created_review_request": false,
-  "last_block_gate": "SecretContentGuard",
-  "last_block_reason_hash": "267fc217ed70d6f24d34b95916a9b7a4b25261a691d7cfaaf62f09906b701bc7",
-  "last_diff_hash": "03c78532f3da778b400023c267ea15e4f604ba8441860182b0824655f0ab208d",
   "max_continuations": 0,
   "mode": "supervised",
-  "phase": "review_required",
+  "phase": "done",
   "review": {
-    "attempts": 5,
+    "attempts": 6,
     "required": true,
     "review_path": "tasks/reviews/apex-ponytail-production.md",
     "run_id": "019f098a-39cf-7e01-89b0-d7efe539e22d",
-    "status": "pending"
+    "status": "ready"
   },
   "schema_version": 1,
   "slug": "apex-ponytail-production",
   "task_id": "apex-ponytail-production",
   "todo_path": "tasks/todo+apex-ponytail-production.md",
-  "updated_at": "2026-06-28T08:56:13+0800",
+  "updated_at": "2026-06-28T15:35:00+0800",
   "version": 1
 }

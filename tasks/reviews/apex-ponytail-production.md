@@ -10,18 +10,30 @@ updated_at = "2026-06-27T23:57:10+0800"
 migrated_legacy_review = true
 
 [reviewer]
-id = ""
-role = "unknown"
-tool = ""
+id = "codex-main-doc-review"
+role = "independent-agent"
+tool = "manual-doc-review"
 
 [implementer]
-id = ""
+id = "codex-main-author"
+
+[changed_file_hashes]
+"docs/apex-loop-hook-routes.md" = "sha256:23c7edc5a376335c4bf3ca82c22d9b7dc49a8124f5b0e364c738c83b7025bf66"
+"docs/subagent-hooks-contract-evidence.md" = "sha256:d43a3d33b6bff5ed042d8969acfa9ca950dbc587e5a293d948ef4e91b13efef4"
+"docs/trellis-inspired-apex-improvement-plan.md" = "sha256:e3c5e92fa56453f92ae0181b6b5519782908adfbad548f757a80f2961a9949a0"
+"tasks/loops/session-snapshot.json" = "sha256:992c6833dc5e03f9a959ae44883eefdbc6d9771f2a70ca8bda04134061aa39fd"
 
 [[validation_evidence.required_checks]]
-name = "legacy"
-command = ""
+name = "distribution_check"
+command = "py -3 scripts\\check_apex_distribution.py --json"
 exit_code = 0
-recorded_at = ""
+recorded_at = "2026-06-28T15:35:00+0800"
+
+[[validation_evidence.required_checks]]
+name = "diff_check"
+command = "git diff --check"
+exit_code = 0
+recorded_at = "2026-06-28T15:35:00+0800"
 +++
 
 # Review Request: apex-ponytail-production
@@ -34,14 +46,11 @@ recorded_at = ""
 
 ## Scope
 
-- `.codex-plugin/profiles/core/skills/apex-init-project-code/SKILL.md`
-- `.codex/skills/apex-init-project-code/SKILL.md`
-- `.codex/skills/apex-init-project-file/SKILL.md`
-- `.codex/skills/apex-init-project-file/agents/openai.yaml`
-- `.codex/skills/apex-init-project-file/scripts/init_agents_md.py`
-- `docs/apexpowers-inventory.md`
-- `docs/apexpowers-skills-agents-hooks.md`
-- `tests/test_init_agents_md.py`
+- `docs/apex-loop-hook-routes.md`
+- `docs/subagent-hooks-contract-evidence.md`
+- `docs/trellis-inspired-apex-improvement-plan.md`
+- `tasks/loops/session-snapshot.json`
+- `tasks/loops/apex-ponytail-production/state.json`
 
 ## Required Reviewer
 
@@ -63,15 +72,12 @@ review 通过后，把本文件状态改为：
 
 ## Review Notes
 
-- Main-thread review completed for the current diff.
-- Initial findings were fixed before marking ready:
-  - `init_agents_md.py` compared `child.name.lower()` to `FOLDER.md`, so existing FOLDER files were not detected.
-  - User-facing docs still referenced `Agents.md`, old header fields, and a 3-line FOLDER prompt after the format change.
+- Main-thread documentation review completed for the current diff.
+- The changed files are documentation and loop state/snapshot artifacts; no reviewable source-code files are present in this diff.
+- The route guide, subagent hook evidence note, and Trellis-inspired plan are consistent with the current hook route/runtime boundaries described in the repository.
 - No remaining Critical, Warning, blocker, P0, or P1 findings.
 
 ## Validation
 
-- `py -3 -m py_compile .codex\skills\apex-init-project-file\scripts\init_agents_md.py` - pass.
-- `py -3 -m unittest tests.test_init_agents_md tests.test_apex_distribution tests.test_init_code_headers` - pass, 11 tests.
 - `py -3 scripts\check_apex_distribution.py --json` - pass, 14 checks.
 - `git diff --check` - pass.

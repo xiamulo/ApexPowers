@@ -1,0 +1,18 @@
+{
+  "active_task": "apex-ponytail-production",
+  "blockers": [],
+  "captured_at": "2026-06-28T12:54:34+0800",
+  "changed_files": [
+    "docs/subagent-hooks-contract-evidence.md",
+    "docs/trellis-inspired-apex-improvement-plan.md",
+    "tasks/loops/apex-ponytail-production/state.json",
+    "tasks/loops/session-snapshot.json"
+  ],
+  "current_diff_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "review_path": "tasks/reviews/apex-ponytail-production.md",
+  "schema_version": 1,
+  "security_required": false,
+  "todo_path": "tasks/todo+apex-ponytail-production.md",
+  "workflow_source": "tasks/loops/workflow.md",
+  "workflow_state": "review_required"
+}
