@@ -54,6 +54,22 @@ class InitCodeHeadersTests(unittest.TestCase):
 
         self.assertEqual(payload["targets"], [])
 
+    def test_common_component_config_style_and_sql_exts_are_scanned(self) -> None:
+        """Broader source families are selected without enabling Markdown scanning."""
+
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            for name in ("App.vue", "page.nvue", "pipeline.yaml", "theme.scss", "query.sql"):
+                (root / name).write_text("content\n", encoding="utf-8")
+            (root / "notes.md").write_text("content\n", encoding="utf-8")
+
+            payload = self.run_script(root)
+
+        self.assertEqual(
+            payload["targets"],
+            ["App.vue", "page.nvue", "pipeline.yaml", "query.sql", "theme.scss"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -80,15 +80,11 @@ Opus-like 协作对话哲学。严格遵守此文件。
 - 优先使用 `delta` 作为 diff 和 git 输出的 pager。
 - 必要时回退到 `less -R` 和 `git diff --color`。
 
-## 6. 质量门（变更前必执行）
+## 6. 验证证据
 
-在提出任何变更前，必须按顺序本地或 CI 执行：
-
-1. lint（例如 `npm run lint`、`flake8 .`）
-2. type-check（例如 `mypy .`、`tsc --noEmit`）
-3. test（例如 `pytest`、`npm test`）
-
-检查失败时必须阻塞 PR，并在 PR 描述中附上复现命令和 CI 片段。
+- 根据变更风险选择最小但足够的验证方式。
+- 若项目、任务或用户明确要求 lint、type-check、test、build 或格式检查，则按要求执行并记录结果。
+- 若没有可用检查或本轮未运行检查，必须如实说明原因和剩余风险。
 
 ## 7. Serena 工具链（Tooling Requirements）
 
@@ -124,11 +120,9 @@ Opus-like 协作对话哲学。严格遵守此文件。
 每次提交必须：
 
 - 成功编译。
-- 符合项目格式化和 lint 规则。
 
 提交前：
 
-- 运行格式化和 linter。
 - 自我审查变更。
 - 提交信息解释为什么，而不仅仅是做了什么。
 
@@ -178,7 +172,7 @@ Opus-like 协作对话哲学。严格遵守此文件。
 - 不为不可能发生的场景做防御性处理。
 - 不读取、输出或提交 `.env`、secrets、token、凭据、SSH key、机器本地状态。
 - 不运行破坏性 Git 或文件操作，例如 `git reset --hard`、`git checkout --`、强制 push、递归删除核心目录，除非用户明确要求并且风险已说明。
-- 不绕过 lint、test、type-check、pre-commit、hook 或 CI。
+- 不绕过用户、任务或 CI 明确要求的检查、pre-commit、hook 或 CI。
 - 不修改生成规则、hook、CI、agent 配置等保护层来逃避检查。
 
 ### 16.2 文件大小与拆分
@@ -557,11 +551,11 @@ CLAUDE_TEMPLATE = """# claude.md - 项目灵魂手册
 
 ## 项目结构自维护（分形文档纪律 - 强制！）
 
-- 每个子目录必须存在 AGENTS.md（≤5 行）：
-  - 每个子目录必须存在 **AGENTS.md**（严格 ≤5 行）：
+- 每个子目录必须存在 FOLDER.md（≤8 行）：
+  - 每个子目录必须存在 **FOLDER.md**（严格 ≤8 行）：
   - 第一行：本文件夹目的（一句话）
   - 后面列出每个文件名称 + 角色 + 功能（bullet list）
-  - 结尾加一句「Agents: 一旦本文件夹内容变化，必须立即同步更新本 AGENTS.md 以及所有相关源码文件的头部注释」
+  - 结尾加一句「Agents: 一旦本文件夹内容变化，必须立即同步更新本 FOLDER.md 以及所有相关源码文件的头部注释」
 - 每个源码文件顶部 3-5 行注释块：
   - **@purpose**：一句话描述本文件核心作用
   - **@input**：依赖外部的什么（文件 / 模块 / 数据）
@@ -613,7 +607,7 @@ CODEX_RULE_APPENDIX = """
 - 不为不可能发生的场景做防御性处理。
 - 不读取、输出或提交 `.env`、secrets、token、凭据、SSH key、机器本地状态。
 - 不运行破坏性 Git 或文件操作，例如 `git reset --hard`、`git checkout --`、强制 push、递归删除核心目录，除非用户明确要求并且风险已说明。
-- 不绕过 lint、test、type-check、pre-commit、hook 或 CI。
+- 不绕过用户、任务或 CI 明确要求的检查、pre-commit、hook 或 CI。
 - 不修改生成规则、hook、CI、agent 配置等保护层来逃避检查。
 
 ## 任务契约与证据化验收
@@ -655,7 +649,7 @@ CODEX_RULE_APPENDIX = """
 ## 验证要求
 
 - 文档、文案、简单配置：至少自检生成结果、路径和内容是否正确。
-- 代码逻辑：优先运行项目已有 lint、type-check、test、build 或关键路径验证。
+- 代码逻辑：按变更风险选择项目已有检查、build 或关键路径验证。
 - 接口、数据库、核心流程：补充关键路径或集成验证。
 - 修改 ApexPowers Python 脚本后，至少运行 `python -m py_compile` 覆盖相关脚本。
 - 验证失败时，直接报告失败命令、关键错误和下一步判断，不包装成完成。

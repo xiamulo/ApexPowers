@@ -10,23 +10,83 @@ from pathlib import Path
 
 
 LINE_COMMENT_EXTS = {
-    ".ts",
-    ".tsx",
+    ".as",
+    ".c",
+    ".cc",
+    ".clj",
+    ".cljs",
+    ".cs",
+    ".cxx",
+    ".dart",
+    ".d",
+    ".ex",
+    ".exs",
+    ".fs",
+    ".fsi",
+    ".fsx",
+    ".go",
+    ".groovy",
+    ".h",
+    ".hh",
+    ".hpp",
+    ".hxx",
+    ".java",
+    ".jl",
     ".js",
     ".jsx",
-    ".go",
-    ".rs",
-    ".java",
-    ".cs",
-    ".cpp",
-    ".c",
-    ".h",
-    ".hpp",
     ".kt",
+    ".kts",
+    ".m",
+    ".mm",
+    ".php",
+    ".pde",
+    ".rs",
+    ".scala",
+    ".sc",
+    ".sol",
+    ".swift",
+    ".ts",
+    ".tsx",
+    ".zig",
 }
-HASH_COMMENT_EXTS = {".py"}
+HASH_COMMENT_EXTS = {
+    ".awk",
+    ".bash",
+    ".bats",
+    ".fish",
+    ".gemspec",
+    ".gn",
+    ".gni",
+    ".nim",
+    ".pl",
+    ".pm",
+    ".ps1",
+    ".py",
+    ".pyw",
+    ".r",
+    ".rb",
+    ".rake",
+    ".sh",
+    ".tcl",
+    ".tf",
+    ".tfvars",
+    ".toml",
+    ".yaml",
+    ".yml",
+    ".zsh",
+}
+HTML_COMMENT_EXTS = {".astro", ".html", ".nvue", ".svelte", ".vue", ".wxml", ".xml"}
+CSS_COMMENT_EXTS = {".css", ".less", ".scss", ".sass", ".styl"}
+SQL_COMMENT_EXTS = {".sql"}
 MD_COMMENT_EXTS = {".md", ".mdx"}
-SUPPORTED_EXTS = LINE_COMMENT_EXTS | HASH_COMMENT_EXTS | MD_COMMENT_EXTS
+SUPPORTED_EXTS = (
+    LINE_COMMENT_EXTS
+    | HASH_COMMENT_EXTS
+    | HTML_COMMENT_EXTS
+    | CSS_COMMENT_EXTS
+    | SQL_COMMENT_EXTS
+    | MD_COMMENT_EXTS
+)
 SOURCE_EXTS = SUPPORTED_EXTS - MD_COMMENT_EXTS
 SKIP_DIRS = {
     ".git",

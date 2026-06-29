@@ -1,20 +1,35 @@
 {
-  "review": {
-    "required": true,
-    "status": "ready",
-    "attempts": 2,
-    "review_path": "tasks/reviews/apex-loop-hooks.md",
-    "run_id": "019eb9e1-abb4-7701-9ede-330d86162c24"
+  "block_count_for_same_reason": 1,
+  "changed_file_hashes": {
+    ".codex/skills/apex-init-project-agent/scripts/init_project_agent.py": "sha256:ff8d2d1f96cb5b2c19bfac6b197cacfaa9fa834bcf6e85d635ff5c01db63c482",
+    ".codex/skills/apex-init-project-code/scripts/init_code_headers.py": "sha256:b13b4b6a1089b7d0dcacb2d0409e722bf80fb630460703c327ce0d5c78834cbc",
+    "tests/test_init_code_headers.py": "sha256:e596e232ea94a87a5013a1962e63cd87dfdaae85e4a392cc830a2f5a0f1826d5"
   },
-  "version": 1,
-  "slug": "apex-loop-hooks",
-  "todo_path": "tasks/todo+apex-loop-hooks.md",
   "changed_files": [
-    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_routes.py",
-    ".codex/skills/apex-sync-agent-mirrors/scripts/sync_agent_mirrors.py",
-    "tests/test_apex_loop_hooks.py",
-    "tests/test_apex_loop_installer.py"
+    ".codex/skills/apex-init-project-agent/scripts/init_project_agent.py",
+    ".codex/skills/apex-init-project-code/scripts/init_code_headers.py",
+    "tests/test_init_code_headers.py"
   ],
-  "updated_at": "2026-06-25T09:09:00+0800",
-  "phase": "validation_passed"
+  "continuation_count": 0,
+  "created_review_request": false,
+  "last_block_gate": "ReviewGate",
+  "last_block_reason_hash": "294f1b29376490d0d4957d5a0da2eacc5dce84598f107be7aafddf6167eb1cdf",
+  "last_diff_hash": "54ad91da99ae2b1722670eb74af28fa8e13ef785c5be4ddeaf76a4467104bdcd",
+  "max_continuations": 0,
+  "mode": "supervised",
+  "phase": "review_required",
+  "review": {
+    "attempts": 6,
+    "required": true,
+    "review_path": "tasks/reviews/apex-loop-hooks.md",
+    "run_id": "019f12c7-0a4b-73b2-9b7f-ce1fd3c78511",
+    "status": "pending"
+  },
+  "review_path": "tasks/reviews/apex-loop-hooks.md",
+  "schema_version": 1,
+  "slug": "apex-loop-hooks",
+  "task_id": "apex-loop-hooks",
+  "todo_path": "tasks/todo+apex-loop-hooks.md",
+  "updated_at": "2026-06-29T18:03:01+0800",
+  "version": 1
 }
