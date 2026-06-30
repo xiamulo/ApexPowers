@@ -85,6 +85,8 @@ class ApexCliTests(unittest.TestCase):
         update = self.run_apex("update", "--dry-run", "--json")
         doctor = self.run_apex("doctor", "--json")
         sync = self.run_apex("sync-agent-mirrors", "--json")
+        init = self.run_apex("init", "--json")
+        explain = self.run_apex("hooks", "explain", "--json")
 
         self.assertEqual(install.returncode, 0, install.stderr)
         self.assertEqual(json.loads(install.stdout)["operation"], "install")
@@ -92,6 +94,39 @@ class ApexCliTests(unittest.TestCase):
         self.assertEqual(json.loads(update.stdout)["operation"], "update")
         self.assertEqual(doctor.returncode, 0, doctor.stderr)
         self.assertEqual(sync.returncode, 0, sync.stderr)
+        self.assertEqual(init.returncode, 0, init.stderr)
+        self.assertEqual(json.loads(init.stdout)["operation"], "init")
+        self.assertEqual(explain.returncode, 0, explain.stderr)
+        self.assertFalse(json.loads(explain.stdout)["writesByDefault"])
+
+    def test_shortcut_commands_reuse_profile_lifecycle(self) -> None:
+        """Short public commands keep the same manifest-managed behavior."""
+
+        with tempfile.TemporaryDirectory() as raw:
+            target = Path(raw) / "project"
+            target.mkdir()
+
+            init = self.run_apex("init", str(target), "--write", "--json")
+            add = self.run_apex("add", "frontend", str(target), "--target", "codex", "--write", "--json")
+            sync = self.run_apex("sync", str(target), "--target", "auto", "--json")
+            remove = self.run_apex("remove", "frontend", str(target), "--target", "codex", "--write", "--json")
+
+        init_payload = json.loads(init.stdout)
+        add_payload = json.loads(add.stdout)
+        sync_payload = json.loads(sync.stdout)
+        remove_payload = json.loads(remove.stdout)
+
+        self.assertEqual(init.returncode, 0, init.stderr)
+        self.assertEqual(init_payload["operation"], "init")
+        self.assertEqual(init_payload["profiles"], ["core"])
+        self.assertEqual(init_payload["targets"], ["codex", "claude"])
+        self.assertEqual(add.returncode, 0, add.stderr)
+        self.assertEqual(add_payload["operation"], "add")
+        self.assertEqual(add_payload["profiles"], ["frontend"])
+        self.assertEqual(sync.returncode, 0, sync.stderr)
+        self.assertEqual(sync_payload["targets"], ["codex", "claude"])
+        self.assertEqual(remove.returncode, 0, remove.stderr)
+        self.assertEqual(remove_payload["operation"], "uninstall")
 
     def test_update_skips_modified_managed_file(self) -> None:
         """Update does not overwrite a managed file after user modification."""

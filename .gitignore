@@ -1,6 +1,12 @@
 .serena/
 __pycache__/
 *.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+node_modules/
+npm-debug.log*
 .env
 .env.*
 tasks/loops/failures.jsonl

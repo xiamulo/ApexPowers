@@ -1,0 +1,52 @@
+{
+  "name": "apexpowers",
+  "version": "0.1.0",
+  "description": "Cross-agent workflow installer for Codex, Claude Code, and AI coding harnesses.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/xiamulo/ApexPowers#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xiamulo/ApexPowers.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xiamulo/ApexPowers/issues"
+  },
+  "bin": {
+    "apex": "bin/apex.js"
+  },
+  "files": [
+    "bin/",
+    "src/apexpowers_cli/",
+    ".codex/skills/",
+    ".claude/skills/",
+    ".agents/",
+    ".codex-plugin/",
+    ".claude-plugin/",
+    "commands/",
+    "registry/",
+    "docs/",
+    "NOTICE.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "codex",
+    "claude-code",
+    "ai-coding",
+    "agents",
+    "skills",
+    "workflow"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "prepack": "node -e \"const fs=require('fs');const path=require('path');function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=path.join(d,e.name);if(e.isDirectory()){if(e.name==='__pycache__'||e.name.endsWith('.egg-info'))fs.rmSync(p,{recursive:true,force:true});else walk(p)}}} walk(process.cwd())\"",
+    "test": "python -m unittest tests.test_apex_cli tests.test_apex_distribution",
+    "lint": "python -m py_compile src/apexpowers_cli/cli.py",
+    "pack:artifacts": "python src/apexpowers_cli/cli.py pack --profile core --target all --output dist --force"
+  }
+}

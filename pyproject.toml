@@ -3,17 +3,107 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "apexpowers-cli"
+name = "apexpowers"
 version = "0.1.0"
-description = "ApexPowers profile installer and distribution CLI."
+description = "Cross-agent workflow installer for Codex, Claude Code, and AI coding harnesses."
 requires-python = ">=3.10"
 dependencies = []
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{name = "xiamulo"}]
+keywords = ["codex", "claude-code", "ai-coding", "agents", "skills", "workflow"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development",
+]
+
+[project.urls]
+Homepage = "https://github.com/xiamulo/ApexPowers"
+Repository = "https://github.com/xiamulo/ApexPowers"
+Issues = "https://github.com/xiamulo/ApexPowers/issues"
+Documentation = "https://github.com/xiamulo/ApexPowers/tree/main/docs"
 
 [project.scripts]
 apex = "apexpowers_cli.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.data-files]
+"share/apexpowers" = ["README.md", "NOTICE.md", "LICENSE"]
+"share/apexpowers/.agents" = [".agents/*.md"]
+"share/apexpowers/.claude-plugin" = [".claude-plugin/*.json"]
+"share/apexpowers/.claude/skills/apex-session-init-claude-code" = [".claude/skills/apex-session-init-claude-code/*"]
+"share/apexpowers/.codex-plugin" = [".codex-plugin/*.json"]
+"share/apexpowers/.codex-plugin/profiles/core/skills/apex-doctor" = [".codex-plugin/profiles/core/skills/apex-doctor/*"]
+"share/apexpowers/.codex-plugin/profiles/core/skills/apex-init-project-agent" = [".codex-plugin/profiles/core/skills/apex-init-project-agent/*"]
+"share/apexpowers/.codex-plugin/profiles/core/skills/apex-init-project-code" = [".codex-plugin/profiles/core/skills/apex-init-project-code/*"]
+"share/apexpowers/.codex-plugin/profiles/core/skills/apex-init-project-file" = [".codex-plugin/profiles/core/skills/apex-init-project-file/*"]
+"share/apexpowers/.codex-plugin/profiles/core/skills/apex-session-init-codex" = [".codex-plugin/profiles/core/skills/apex-session-init-codex/*"]
+"share/apexpowers/.codex-plugin/profiles/core/skills/apex-sync-agent-mirrors" = [".codex-plugin/profiles/core/skills/apex-sync-agent-mirrors/*"]
+"share/apexpowers/.codex/skills/accessibility" = [".codex/skills/accessibility/*.*"]
+"share/apexpowers/.codex/skills/apex-doctor" = [".codex/skills/apex-doctor/*.*"]
+"share/apexpowers/.codex/skills/apex-grill-with-docs" = [".codex/skills/apex-grill-with-docs/*.*"]
+"share/apexpowers/.codex/skills/apex-init-project-agent" = [".codex/skills/apex-init-project-agent/*.*"]
+"share/apexpowers/.codex/skills/apex-init-project-code" = [".codex/skills/apex-init-project-code/*.*"]
+"share/apexpowers/.codex/skills/apex-init-project-file" = [".codex/skills/apex-init-project-file/*.*"]
+"share/apexpowers/.codex/skills/apex-init-project-hooks" = [".codex/skills/apex-init-project-hooks/*.*"]
+"share/apexpowers/.codex/skills/apex-lean-review" = [".codex/skills/apex-lean-review/*.*"]
+"share/apexpowers/.codex/skills/apex-session-init-codex" = [".codex/skills/apex-session-init-codex/*.*"]
+"share/apexpowers/.codex/skills/apex-sync-agent-mirrors" = [".codex/skills/apex-sync-agent-mirrors/*.*"]
+"share/apexpowers/.codex/skills/apex-to-issues" = [".codex/skills/apex-to-issues/*.*"]
+"share/apexpowers/.codex/skills/apex-to-prd" = [".codex/skills/apex-to-prd/*.*"]
+"share/apexpowers/.codex/skills/best-practices" = [".codex/skills/best-practices/*.*"]
+"share/apexpowers/.codex/skills/core-web-vitals" = [".codex/skills/core-web-vitals/*.*"]
+"share/apexpowers/.codex/skills/frontend-design" = [".codex/skills/frontend-design/*.*"]
+"share/apexpowers/.codex/skills/github-solution-research" = [".codex/skills/github-solution-research/*.*"]
+"share/apexpowers/.codex/skills/gsap-core" = [".codex/skills/gsap-core/*.*"]
+"share/apexpowers/.codex/skills/gsap-frameworks" = [".codex/skills/gsap-frameworks/*.*"]
+"share/apexpowers/.codex/skills/gsap-performance" = [".codex/skills/gsap-performance/*.*"]
+"share/apexpowers/.codex/skills/gsap-plugins" = [".codex/skills/gsap-plugins/*.*"]
+"share/apexpowers/.codex/skills/gsap-react" = [".codex/skills/gsap-react/*.*"]
+"share/apexpowers/.codex/skills/gsap-scrolltrigger" = [".codex/skills/gsap-scrolltrigger/*.*"]
+"share/apexpowers/.codex/skills/gsap-timeline" = [".codex/skills/gsap-timeline/*.*"]
+"share/apexpowers/.codex/skills/gsap-utils" = [".codex/skills/gsap-utils/*.*"]
+"share/apexpowers/.codex/skills/performance" = [".codex/skills/performance/*.*"]
+"share/apexpowers/.codex/skills/react-best-practices" = [".codex/skills/react-best-practices/*.*"]
+"share/apexpowers/.codex/skills/seo" = [".codex/skills/seo/*.*"]
+"share/apexpowers/.codex/skills/web-design-guidelines" = [".codex/skills/web-design-guidelines/*.*"]
+"share/apexpowers/.codex/skills/web-quality-audit" = [".codex/skills/web-quality-audit/*.*"]
+"share/apexpowers/.codex/skills/webapp-testing" = [".codex/skills/webapp-testing/*.*"]
+"share/apexpowers/.codex/skills/accessibility/references" = [".codex/skills/accessibility/references/*"]
+"share/apexpowers/.codex/skills/apex-doctor/agents" = [".codex/skills/apex-doctor/agents/*"]
+"share/apexpowers/.codex/skills/apex-doctor/scripts" = [".codex/skills/apex-doctor/scripts/*.py"]
+"share/apexpowers/.codex/skills/apex-init-project-agent/agents" = [".codex/skills/apex-init-project-agent/agents/*"]
+"share/apexpowers/.codex/skills/apex-init-project-agent/scripts" = [".codex/skills/apex-init-project-agent/scripts/*.py"]
+"share/apexpowers/.codex/skills/apex-init-project-code/agents" = [".codex/skills/apex-init-project-code/agents/*"]
+"share/apexpowers/.codex/skills/apex-init-project-code/scripts" = [".codex/skills/apex-init-project-code/scripts/*.py"]
+"share/apexpowers/.codex/skills/apex-init-project-file/agents" = [".codex/skills/apex-init-project-file/agents/*"]
+"share/apexpowers/.codex/skills/apex-init-project-file/scripts" = [".codex/skills/apex-init-project-file/scripts/*.py"]
+"share/apexpowers/.codex/skills/apex-init-project-hooks/agents" = [".codex/skills/apex-init-project-hooks/agents/*"]
+"share/apexpowers/.codex/skills/apex-init-project-hooks/scripts" = [".codex/skills/apex-init-project-hooks/scripts/*.py"]
+"share/apexpowers/.codex/skills/apex-init-project-hooks/templates" = [".codex/skills/apex-init-project-hooks/templates/*"]
+"share/apexpowers/.codex/skills/apex-session-init-codex/agents" = [".codex/skills/apex-session-init-codex/agents/*"]
+"share/apexpowers/.codex/skills/apex-sync-agent-mirrors/agents" = [".codex/skills/apex-sync-agent-mirrors/agents/*"]
+"share/apexpowers/.codex/skills/apex-sync-agent-mirrors/scripts" = [".codex/skills/apex-sync-agent-mirrors/scripts/*.py"]
+"share/apexpowers/.codex/skills/core-web-vitals/references" = [".codex/skills/core-web-vitals/references/*"]
+"share/apexpowers/.codex/skills/github-solution-research/agents" = [".codex/skills/github-solution-research/agents/*"]
+"share/apexpowers/.codex/skills/github-solution-research/references" = [".codex/skills/github-solution-research/references/*"]
+"share/apexpowers/.codex/skills/next-best-practices" = [".codex/skills/next-best-practices/*"]
+"share/apexpowers/.codex/skills/react-best-practices/rules" = [".codex/skills/react-best-practices/rules/*"]
+"share/apexpowers/.codex/skills/web-quality-audit/scripts" = [".codex/skills/web-quality-audit/scripts/*"]
+"share/apexpowers/.codex/skills/webapp-testing/examples" = [".codex/skills/webapp-testing/examples/*"]
+"share/apexpowers/.codex/skills/webapp-testing/scripts" = [".codex/skills/webapp-testing/scripts/*"]
+"share/apexpowers/commands" = ["commands/*.toml"]
+"share/apexpowers/registry" = ["registry/*.json"]
+"share/apexpowers/docs" = ["docs/*.md", "docs/*.sha256"]

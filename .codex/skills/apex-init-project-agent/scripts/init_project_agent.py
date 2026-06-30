@@ -319,6 +319,26 @@ CLAUDE_TEMPLATE = """# claude.md - 项目灵魂手册
 
 - **验证前置与资深自检**：完成前严格按 `.claude/rules/git-workflow.md` 清单逐项确认。列出「可能出问题的地方」并建议覆盖测试。自问：「资深工程师会认可这个吗？」。永不主动标记 done，未验证不声称已验证。
 
+### 非平凡任务与契约式任务的 Subagent 执行强制规则
+
+**触发条件**：只要任务需要创建或更新 `todo+<task-slug>.md`（即 L1/L2 非平凡任务、需要 contract 的任务），**必须** 分配专用 Subagent 执行代码写入和实现工作，主 agent **仅负责** 最终 review、验收和整合。
+
+**执行流程**：
+1. 主 agent 完成需求澄清后，先创建/更新 contract（`todo+<slug>.md`），明确 `允许路径`、`禁止路径`、`验收`、`必跑检查`。
+2. 在 contract 中或紧接着明确标注执行模式（推荐在 YAML 里加 `执行模式: subagent`）。
+3. 主 agent 从 `agents/` 目录调用或生成专用 subagent 指令（推荐维护 `agents/slice-executor.md` 模板），把**单个 Slice** 的完整 contract 交给 subagent。
+4. Subagent 必须严格遵守：
+   - Ponytail 最小实现阶梯
+   - 只允许修改 contract 中声明的路径
+   - 每完成一个验收项必须产生可验证证据
+   - 输出变更文件列表 + 运行命令 + 测试/检查摘要
+5. 主 agent 接收 subagent 返回的摘要 + 变更后，严格执行“验证前置与资深自检” checklist：
+   - 运行 contract 要求的 `必跑检查`
+   - 确认未触碰任何禁止路径
+   - 对照 `验收` 逐条验证（必要时补充人工或额外命令验证）
+   - 只有全部通过才更新 todo 状态并标记完成
+
+**例外**：纯 L0 小改动（单文件、极低风险、无需 contract）可由主 agent 直接执行，但仍需做最小必要验证。
 2. 任务分级与执行策略
 
 - **L0（小改动）**：直接执行并做最小必要验证。

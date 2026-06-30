@@ -1,7 +1,0 @@
-Metadata-Version: 2.4
-Name: apexpowers-cli
-Version: 0.1.0
-Summary: ApexPowers profile installer and distribution CLI.
-Requires-Python: >=3.10
-License-File: NOTICE.md
-Dynamic: license-file

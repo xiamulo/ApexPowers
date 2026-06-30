@@ -56,6 +56,13 @@ REQUIRED_ARTIFACTS = {
     "benchmark-script": "benchmarks/apex_distribution_benchmark.py",
     "inventory-doc": "docs/apexpowers-inventory.md",
     "readme": "README.md",
+    "license": "LICENSE",
+    "contributing": "CONTRIBUTING.md",
+    "security": "SECURITY.md",
+    "changelog": "CHANGELOG.md",
+    "open-source-release-playbook": "docs/open-source-release-playbook.md",
+    "npm-package": "package.json",
+    "python-manifest": "MANIFEST.in",
 }
 COMMAND_FILES = (
     "commands/apex-doctor.toml",
@@ -550,6 +557,9 @@ def check_repo_metadata(root: Path) -> Check:
         "platform-native-solutions.md",
         "supply-chain-trust-security.md",
         "NOTICE.md",
+        "apex init",
+        "apex hooks explain",
+        "open-source-release-playbook.md",
     )
     issues: list[str] = []
     for item in required:

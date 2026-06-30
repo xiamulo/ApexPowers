@@ -14,6 +14,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+try:
+    from . import __version__
+except ImportError:  # pragma: no cover - direct script execution.
+    __version__ = "0.1.0"
 
 MANAGED_BY = "ApexPowers apex CLI"
 INSTALL_MANIFEST = Path(".apex") / "apexpowers-install.json"
@@ -78,6 +82,9 @@ def source_root() -> Path:
     for parent in (current.parent, *current.parents):
         if (parent / PROFILE_MANIFEST).is_file():
             return parent
+    installed_root = Path(sys.prefix) / "share" / "apexpowers"
+    if (installed_root / PROFILE_MANIFEST).is_file():
+        return installed_root
     raise CliError("Cannot locate registry/apexpowers-profiles.json. Set APEXPOWERS_ROOT.")
 
 
@@ -489,13 +496,13 @@ def normalize_targets(targets: tuple[str, ...]) -> tuple[str, ...]:
 
     output: list[str] = []
     for target in targets:
-        if target == "all":
+        if target in {"all", "auto"}:
             for item in HOST_TARGETS:
                 if item not in output:
                     output.append(item)
             continue
         if target not in HOST_TARGETS:
-            raise CliError(f"Unsupported install target: {target}. Expected codex, claude, or all.")
+            raise CliError(f"Unsupported install target: {target}. Expected codex, claude, auto, or all.")
         if target not in output:
             output.append(target)
     return tuple(output)
@@ -806,7 +813,84 @@ def version(args: argparse.Namespace) -> int:
 
     apex_root = source_root()
     plugin = load_json_file(apex_root / ".codex-plugin" / "plugin.json")
-    payload = {"cli": "0.1.0", "plugin": plugin.get("version", "unknown")}
+    payload = {"cli": __version__, "plugin": plugin.get("version", "unknown")}
+    return emit_payload(payload, args.json)
+
+
+def friendly_install_args(args: argparse.Namespace, profile: str | None = None) -> argparse.Namespace:
+    """Build an install/update namespace for user-facing shortcut commands."""
+
+    return argparse.Namespace(
+        root=args.root,
+        profile=profile if profile is not None else args.profile,
+        target=args.target,
+        scope="project",
+        hook_scope=args.hook_scope,
+        codex_home=args.codex_home,
+        claude_home=args.claude_home,
+        codex_config_format=args.codex_config_format,
+        dry_run=args.dry_run,
+        write=args.write,
+        force=args.force,
+        json=args.json,
+    )
+
+
+def init_project(args: argparse.Namespace) -> int:
+    """Initialize the current project with the public default profile."""
+
+    install_args = friendly_install_args(args, args.profile or "core")
+    return install_or_update(install_args, "init")
+
+
+def add_profile(args: argparse.Namespace) -> int:
+    """Add one or more profiles with a short command shape."""
+
+    install_args = friendly_install_args(args, args.profile)
+    return install_or_update(install_args, "add")
+
+
+def remove_profile(args: argparse.Namespace) -> int:
+    """Remove installed profile artifacts with a short command shape."""
+
+    remove_args = friendly_install_args(args, args.profile)
+    return uninstall(remove_args)
+
+
+def sync_shortcut(args: argparse.Namespace) -> int:
+    """Sync agent mirrors with a short command shape."""
+
+    sync_args = argparse.Namespace(
+        root=args.root,
+        target=args.target,
+        dry_run=args.dry_run,
+        write=args.write,
+        force=args.force,
+        json=args.json,
+    )
+    return sync_agents(sync_args)
+
+
+def hooks_explain(args: argparse.Namespace) -> int:
+    """Explain the hook trust model without writing files."""
+
+    payload = {
+        "operation": "hooks-explain",
+        "root": str(Path(args.root).expanduser().resolve()),
+        "writesByDefault": False,
+        "defaultMode": "dry-run",
+        "summary": [
+            "ApexPowers never installs lifecycle hooks through plugin manifests.",
+            "Hook installation is opt-in and manifest-managed.",
+            "Run `apex hooks install --dry-run` before `apex hooks install --write`.",
+            "Run `apex hooks uninstall --write` to remove Apex-managed hook entries.",
+        ],
+        "managedLocations": {
+            "codex": "Codex home config plus hooks/apex_loop.py",
+            "claude": "Claude Code settings plus hooks/apex_loop.py",
+            "project": "tasks/loops, tasks/reviews, and tasks/lessons.md",
+        },
+    }
     return emit_payload(payload, args.json)
 
 
@@ -1110,7 +1194,7 @@ def add_common_install_args(parser: argparse.ArgumentParser) -> None:
 
     parser.add_argument("root", nargs="?", default=".", help="Target project root. Defaults to current directory.")
     parser.add_argument("--profile", help="Comma-separated profile names. Defaults to registry default or installed manifest.")
-    parser.add_argument("--target", help="Comma-separated targets: codex, claude, or all. Defaults to codex,claude.")
+    parser.add_argument("--target", help="Comma-separated targets: codex, claude, auto, or all. Defaults to codex,claude.")
     parser.add_argument("--scope", choices=["project"], default="project", help="Install profile artifacts into the target project.")
     parser.add_argument("--hook-scope", choices=["agent", "project"], default="agent", help="Hook installer scope when selected profiles include hooks.")
     parser.add_argument("--codex-home", help="Codex agent home passed to hook installer or doctor.")
@@ -1127,6 +1211,57 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(prog="apex", description="ApexPowers profile installer and distribution CLI.")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    init_parser = subparsers.add_parser("init", help="Initialize a project with the default ApexPowers workflow.")
+    init_parser.add_argument("root", nargs="?", default=".", help="Target project root. Defaults to current directory.")
+    init_parser.add_argument("--profile", help="Comma-separated profile names. Defaults to core.")
+    init_parser.add_argument("--target", default="auto", help="Comma-separated targets: codex, claude, auto, or all. Defaults to auto.")
+    init_parser.add_argument("--hook-scope", choices=["agent", "project"], default="agent")
+    init_parser.add_argument("--codex-home")
+    init_parser.add_argument("--claude-home")
+    init_parser.add_argument("--codex-config-format", choices=["auto", "toml", "json"])
+    init_parser.add_argument("--dry-run", action="store_true", help="Preview changes without writing. This is the default.")
+    init_parser.add_argument("--write", action="store_true", help="Write changes. Default is dry-run.")
+    init_parser.add_argument("--force", action="store_true")
+    init_parser.add_argument("--json", action="store_true")
+    init_parser.set_defaults(func=init_project)
+
+    add_parser = subparsers.add_parser("add", help="Add one or more ApexPowers profiles.")
+    add_parser.add_argument("profile", help="Comma-separated profile names, for example frontend or planning,research.")
+    add_parser.add_argument("root", nargs="?", default=".", help="Target project root. Defaults to current directory.")
+    add_parser.add_argument("--target", default="auto", help="Comma-separated targets: codex, claude, auto, or all. Defaults to auto.")
+    add_parser.add_argument("--hook-scope", choices=["agent", "project"], default="agent")
+    add_parser.add_argument("--codex-home")
+    add_parser.add_argument("--claude-home")
+    add_parser.add_argument("--codex-config-format", choices=["auto", "toml", "json"])
+    add_parser.add_argument("--dry-run", action="store_true", help="Preview changes without writing. This is the default.")
+    add_parser.add_argument("--write", action="store_true")
+    add_parser.add_argument("--force", action="store_true")
+    add_parser.add_argument("--json", action="store_true")
+    add_parser.set_defaults(func=add_profile)
+
+    remove_parser = subparsers.add_parser("remove", help="Remove ApexPowers profile artifacts.")
+    remove_parser.add_argument("profile", nargs="?", help="Comma-separated profile names. Defaults to installed profiles.")
+    remove_parser.add_argument("root", nargs="?", default=".", help="Target project root. Defaults to current directory.")
+    remove_parser.add_argument("--target", default="auto", help="Comma-separated targets: codex, claude, auto, or all. Defaults to auto.")
+    remove_parser.add_argument("--hook-scope", choices=["agent", "project"], default="agent")
+    remove_parser.add_argument("--codex-home")
+    remove_parser.add_argument("--claude-home")
+    remove_parser.add_argument("--codex-config-format", choices=["auto", "toml", "json"])
+    remove_parser.add_argument("--dry-run", action="store_true", help="Preview changes without writing. This is the default.")
+    remove_parser.add_argument("--write", action="store_true")
+    remove_parser.add_argument("--force", action="store_true")
+    remove_parser.add_argument("--json", action="store_true")
+    remove_parser.set_defaults(func=remove_profile)
+
+    sync_short_parser = subparsers.add_parser("sync", help="Sync official agent mirrors from .agents sources.")
+    sync_short_parser.add_argument("root", nargs="?", default=".", help="Target project root. Defaults to current directory.")
+    sync_short_parser.add_argument("--target", default="auto", help="Comma-separated targets: codex, claude, auto, or all. Defaults to auto.")
+    sync_short_parser.add_argument("--dry-run", action="store_true", help="Preview changes without writing. This is the default.")
+    sync_short_parser.add_argument("--write", action="store_true")
+    sync_short_parser.add_argument("--force", action="store_true")
+    sync_short_parser.add_argument("--json", action="store_true")
+    sync_short_parser.set_defaults(func=sync_shortcut)
 
     install_parser = subparsers.add_parser("install", help="Install one or more ApexPowers profiles.")
     add_common_install_args(install_parser)
@@ -1168,6 +1303,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     hooks_parser = subparsers.add_parser("hooks", help="Run hook installer directly.")
     hooks_subparsers = hooks_parser.add_subparsers(dest="hooks_command", required=True)
+    explain_hooks = hooks_subparsers.add_parser("explain", help="Explain hook trust boundaries without writing files.")
+    explain_hooks.add_argument("root", nargs="?", default=".", help="Target project root.")
+    explain_hooks.add_argument("--json", action="store_true")
+    explain_hooks.set_defaults(func=hooks_explain)
     for name in ("install", "update", "uninstall"):
         child = hooks_subparsers.add_parser(name, help=f"{name.title()} hooks through apex-init-project-hooks.")
         child.add_argument("root", nargs="?", default=".", help="Target project root.")
@@ -1184,7 +1323,7 @@ def build_parser() -> argparse.ArgumentParser:
     for sync_name in ("sync-agent-mirrors", "sync-agents"):
         sync_parser = subparsers.add_parser(sync_name, help="Generate official agent mirrors from .agents sources.")
         sync_parser.add_argument("root", nargs="?", default=".", help="Target project root.")
-        sync_parser.add_argument("--target", help="Comma-separated targets: codex, claude, or all.")
+        sync_parser.add_argument("--target", help="Comma-separated targets: codex, claude, auto, or all.")
         sync_parser.add_argument("--dry-run", action="store_true", help="Preview changes without writing. This is the default.")
         sync_parser.add_argument("--write", action="store_true")
         sync_parser.add_argument("--force", action="store_true")

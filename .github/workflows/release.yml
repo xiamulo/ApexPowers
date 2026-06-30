@@ -1,0 +1,78 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish to PyPI and npm when secrets are configured"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install build tools
+        run: python -m pip install --upgrade build twine
+
+      - name: Validate source
+        run: |
+          python -m unittest tests.test_apex_cli tests.test_apex_distribution
+          python scripts/check_apex_distribution.py --json
+
+      - name: Build Python package
+        run: python -m build
+
+      - name: Check Python package
+        run: python -m twine check dist/*
+
+      - name: Build Apex artifacts
+        run: |
+          python src/apexpowers_cli/cli.py pack --profile core --target all --output dist/apex-artifacts --force
+          python src/apexpowers_cli/cli.py pack --profile full --target all --output dist/apex-artifacts --force
+
+      - name: Pack npm package
+        run: npm pack --pack-destination dist
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            dist/**
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/**
+          generate_release_notes: true
+
+      - name: Publish Python package
+        if: github.event_name == 'workflow_dispatch' && inputs.publish == true
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Publish npm package
+        if: github.event_name == 'workflow_dispatch' && inputs.publish == true
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
