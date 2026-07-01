@@ -316,6 +316,10 @@ CLAUDE_TEMPLATE = """# claude.md - 项目灵魂手册
 
 - **多文件/并行任务使用 Subagent 隔离**：修改 >3 个文件或需要并行调研/验证时，立即拆分为多个子任务，交给 `agents/` 目录下专用 Subagent 执行（每个 Subagent 对应一个专注单一目标的 .md 文件）。
   - 研究、调研、代码审查、文档编写等全委托 Subagent，主上下文仅做最终汇总，不被污染。
+  - 主 agent 派发 Subagent 时，禁止使用会继承完整主上下文的 `fork_turns: "all"`。
+  - 主 agent 必须显式写出子任务包：目标、单个 Slice、允许路径、禁止路径、验收项、必跑检查、交付证据、必须阅读的 md 文档清单。
+  - 子任务包只包含执行该 Slice 必需的上下文；不得把完整主对话、无关历史、搜索日志或其他 Slice 细节传给 Subagent。
+  - 派发语必须明确写明：Subagent 是叶子执行者，不能再 spawn / fork / 调度新的 Subagent；遇到需要二次拆分、范围扩大或上下文不足时，停止并把 blocker 交回主 agent。
 
 - **验证前置与资深自检**：完成前严格按 `.claude/rules/git-workflow.md` 清单逐项确认。列出「可能出问题的地方」并建议覆盖测试。自问：「资深工程师会认可这个吗？」。永不主动标记 done，未验证不声称已验证。
 
@@ -326,11 +330,12 @@ CLAUDE_TEMPLATE = """# claude.md - 项目灵魂手册
 **执行流程**：
 1. 主 agent 完成需求澄清后，先创建/更新 contract（`todo+<slug>.md`），明确 `允许路径`、`禁止路径`、`验收`、`必跑检查`。
 2. 在 contract 中或紧接着明确标注执行模式（推荐在 YAML 里加 `执行模式: subagent`）。
-3. 主 agent 从 `agents/` 目录调用或生成专用 subagent 指令（推荐维护 `agents/slice-executor.md` 模板），把**单个 Slice** 的完整 contract 交给 subagent。
+3. 主 agent 从 `agents/` 目录调用或生成专用 subagent 指令（推荐维护 `agents/slice-executor.md` 模板），把**单个 Slice** 的完整 contract 交给 subagent；禁止使用 `fork_turns: "all"` 继承完整主上下文，必须由主 agent 手写最小子任务包和必须阅读的 md 文档清单。
 4. Subagent 必须严格遵守：
    - Ponytail 最小实现阶梯
    - 只允许修改 contract 中声明的路径
    - 每完成一个验收项必须产生可验证证据
+   - 作为叶子执行者，不再 spawn / fork / 调度新的 Subagent
    - 输出变更文件列表 + 运行命令 + 测试/检查摘要
 5. 主 agent 接收 subagent 返回的摘要 + 变更后，严格执行“验证前置与资深自检” checklist：
    - 运行 contract 要求的 `必跑检查`
@@ -635,6 +640,8 @@ CODEX_RULE_APPENDIX = """
 - 非平凡任务修改代码前必须先创建或更新 `tasks/todo+<task-slug>.md`，用中文 YAML key 记录 `任务ID`、`目标`、`风险等级`、`范围/允许路径/禁止路径`、`验收`、`必跑检查`、`交付证据`、`需要审查`。
 - `允许路径`、`禁止路径`、`必跑检查` 不能凭空写；推断项必须标为 `建议允许路径`、`建议禁止路径` 或 `候选检查`。
 - contract 下方必须运行时拆成 `Epic -> Slice -> Step`，每个 Slice 都要有文件范围、依赖、验证命令和完成证据。
+- 派发 Subagent 时禁止使用 `fork_turns: "all"`；主 agent 必须手写最小子任务包，并列出该 Slice 必须阅读的 md 文档。
+- Subagent 必须被明确标注为叶子执行者，不能再 spawn / fork / 调度新的 Subagent；需要二次拆分或额外上下文时交回主 agent。
 - 完成必须同时满足验收、必跑检查、交付证据和必要 review；未验证或有已知限制时必须如实说明。
 
 ## 文件大小与拆分

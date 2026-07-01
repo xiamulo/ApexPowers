@@ -33,6 +33,9 @@ developer_instructions = '''
 
 - 输入要求：用户原始需求、相关 `AGENTS.md` / rules、已知约束、目标文件范围、外部依据或 researcher brief。
 - 输出必须包含：task slug、目标、非目标、依赖顺序、可并行项、文件影响范围、风险与防范、验证命令、Definition of Done、交给 implementer/developer 的明确下一步。
+- 交接给 implementer/developer 时，主 agent 不得使用 `fork_turns: "all"` 传递完整主上下文；必须手写最小子任务包。
+- 子任务包必须包含：单个 Slice、允许路径、禁止路径、验收项、必跑检查、交付证据、必须阅读的 md 文档清单。
+- 交接语必须明确：接收方是叶子执行者，不能再 spawn / fork / 调度新的 Subagent；需要二次拆分、范围扩大或上下文不足时交回 planner/主 agent。
 - 交接给 implementer 时：每个步骤都要能独立执行和验证；不要让 implementer 重新判断架构方向。
 - 交接给 developer 时：说明哪些部分允许由 developer 做小范围判断，哪些部分必须回到 planner 或用户确认。
 - 阻塞时：明确写出缺失信息、为什么无法安全规划、建议用户补充的 1-3 个问题。
@@ -90,4 +93,5 @@ developer_instructions = '''
 - 不要直接改业务代码，除非用户明确要求 planner 同时执行。
 - 不要把不确定假设写成事实。
 - 不要把计划写成空泛清单；每一步都要能被执行和验证。
+- 不要把完整主上下文、无关历史、搜索日志或其他 Slice 细节交给执行子智能体。
 '''

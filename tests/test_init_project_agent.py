@@ -45,6 +45,14 @@ class InitProjectAgentTests(unittest.TestCase):
             self.assertIn("需要审查: true", content)
 
         self.assertIn("任务契约与证据化验收", agents_md)
+        self.assertIn('禁止使用 `fork_turns: "all"`', claude_md)
+        self.assertIn('禁止使用 `fork_turns: "all"`', agents_md)
+        self.assertIn("必须阅读的 md 文档", claude_md)
+        self.assertIn("必须阅读的 md 文档", agents_md)
+        self.assertIn("叶子执行者", claude_md)
+        self.assertIn("叶子执行者", agents_md)
+        self.assertIn("不能再 spawn / fork / 调度新的 Subagent", claude_md)
+        self.assertIn("不能再 spawn / fork / 调度新的 Subagent", agents_md)
 
 
 if __name__ == "__main__":

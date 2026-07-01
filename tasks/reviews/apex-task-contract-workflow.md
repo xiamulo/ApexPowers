@@ -4,10 +4,10 @@ task_id: "apex-task-contract-workflow"
 slug: "apex-task-contract-workflow"
 status: pending
 validation: pass
-reviewed_diff_hash: "sha256:694c7f7f0ddb3f06a4716394cc42202d36f6abd1bc4894047faeb4617ba38003"
+reviewed_diff_hash: "git-sha1:53069d87eab5fe3f5a24fd08b64a53721cb77711"
 risk_level: medium
 created_at: "2026-06-28T00:00:00+0800"
-updated_at: "2026-06-29T16:31:24+0800"
+updated_at: "2026-07-01T00:00:00+0800"
 reviewer:
   id: ""
   role: none
@@ -15,18 +15,45 @@ reviewer:
 implementer:
   id: "codex-main"
 reviewed_file_hashes:
-  .codex/skills/apex-init-project-agent/scripts/init_project_agent.py: "sha256:df8abfa02b06d25f305f1ff54092aec04b50d178bd482243623a21b9fd7025f8"
+  ".codex/skills/apex-init-project-agent/scripts/init_project_agent.py": "sha256:22e69fd994a1e7f416de63b7ecee778713453c6b7da9ec4ed680dde9f139ca64"
+  ".codex/skills/apex-init-project-agent/SKILL.md": "sha256:b4a2fb295c19daf9177ee8f87f68e4f0be74211daf525fb77b8e1f27be86be56"
+  ".codex/skills/apex-init-project-agent/agents/openai.yaml": "sha256:aed807f21aaf9745c3f711995ea3f60ae5d9eded1a7087f489f48d67a04d9116"
+  ".agents/Agents.md": "sha256:9a6cf6b88eb4ac38c0969f0542c946fc72a1cfcc7ec3470725692154ade09ba2"
+  ".agents/planner.md": "sha256:ab32db0ee68f1ce5bf142a7aa83757cef6a5ecc54e88dd75c660c62b7a9d12d1"
+  ".agents/implementer.md": "sha256:c8c333e5899369918159499c1fd36f206b9aede80b2b15502714e39c61fbfbb5"
+  ".agents/developer.md": "sha256:1411a7dd5140b862187db9b45607f0218f961dfa8da0d5999e62c37e604f30c1"
+  "tests/test_init_project_agent.py": "sha256:9f92e0f30e216e742dd3389c77a3de10cd2ccbeff7166f78b1d7d514fcf9721c"
 validation_evidence:
   required_checks:
-    - name: py_compile
+    - name: init_project_agent_py_compile
       command: "py -3 -m py_compile .codex/skills/apex-init-project-agent/scripts/init_project_agent.py"
       exit_code: 0
-      recorded_at: "2026-06-29T16:31:24+0800"
+      recorded_at: "2026-07-01T00:00:00+0800"
+    - name: sync_agent_mirrors_py_compile
+      command: "py -3 -m py_compile .codex/skills/apex-sync-agent-mirrors/scripts/sync_agent_mirrors.py"
+      exit_code: 0
+      recorded_at: "2026-07-01T00:00:00+0800"
+    - name: init_project_agent_tests
+      command: "py -3 -m unittest tests.test_init_project_agent"
+      exit_code: 0
+      recorded_at: "2026-07-01T00:00:00+0800"
+    - name: mirror_sync
+      command: "py -3 .codex/skills/apex-sync-agent-mirrors/scripts/sync_agent_mirrors.py . --target all --write"
+      exit_code: 0
+      recorded_at: "2026-07-01T00:00:00+0800"
+    - name: text_presence
+      command: "rg -n 'fork_turns: \"\"all\"\"|叶子执行者|必须阅读的 md 文档|不能再 spawn / fork / 调度新的 Subagent' .codex/skills/apex-init-project-agent .agents .codex/agents .claude/agents tests/test_init_project_agent.py tasks/todo+apex-task-contract-workflow.md"
+      exit_code: 0
+      recorded_at: "2026-07-01T00:00:00+0800"
+    - name: diff_check
+      command: "git diff --check -- .codex/skills/apex-init-project-agent/SKILL.md .codex/skills/apex-init-project-agent/agents/openai.yaml .codex/skills/apex-init-project-agent/scripts/init_project_agent.py .agents/Agents.md .agents/planner.md .agents/implementer.md .agents/developer.md .codex/agents/developer.toml .codex/agents/implementer.toml .codex/agents/planner.toml .claude/agents/developer.md .claude/agents/implementer.md .claude/agents/planner.md tests/test_init_project_agent.py tasks/todo+apex-task-contract-workflow.md"
+      exit_code: 0
+      recorded_at: "2026-07-01T00:00:00+0800"
 findings:
   - id: independent-review-required
     severity: warning
     status: open
-    summary: "Current diff has implementation self-check evidence, but still needs independent or human review before the review gate can be marked ready."
+    summary: "Implementation self-check passed, but this review request still needs independent or human review before the review gate can be marked ready."
 ---
 
 # Review Request: apex-task-contract-workflow
@@ -39,19 +66,39 @@ findings:
 ## Scope
 
 - `.codex/skills/apex-init-project-agent/scripts/init_project_agent.py`
+- `.codex/skills/apex-init-project-agent/SKILL.md`
+- `.codex/skills/apex-init-project-agent/agents/openai.yaml`
+- `.agents/Agents.md`
+- `.agents/planner.md`
+- `.agents/implementer.md`
+- `.agents/developer.md`
+- `.codex/agents/planner.toml`
+- `.codex/agents/implementer.toml`
+- `.codex/agents/developer.toml`
+- `.claude/agents/planner.md`
+- `.claude/agents/implementer.md`
+- `.claude/agents/developer.md`
+- `tests/test_init_project_agent.py`
+- `tasks/todo+apex-task-contract-workflow.md`
 
 ## Change Summary
 
-- Removed fixed template requirements that made `lint -> type-check -> test` mandatory before every change.
-- Removed fixed commit requirements to satisfy project formatting/lint rules and run formatting/linter before commit.
-- Reworded validation guidance so checks are selected by risk or explicit project/task/user/CI requirements.
-- Kept the requirement to report unrun checks, failed validation, and residual risk honestly.
+- Added a root-template hard rule that main agents must not dispatch subagents with `fork_turns: "all"`.
+- Required main agents to handwrite a minimal subtask package containing one Slice, path boundaries, acceptance, required checks, evidence, and required md documents.
+- Marked execution subagents as leaf executors that must not spawn, fork, or dispatch additional subagents.
+- Updated `.agents` source templates and regenerated Codex/Claude mirrors for planner, implementer, and developer.
+- Extended template tests to assert the generated `AGENTS.md` and `CLAUDE.md` include the new isolation rules.
 
 ## Validation
 
-- `py -3 -m py_compile .codex/skills/apex-init-project-agent/scripts/init_project_agent.py` - pass.
+- `py -3 -m py_compile .codex\skills\apex-init-project-agent\scripts\init_project_agent.py` - pass.
+- `py -3 -m py_compile .codex\skills\apex-sync-agent-mirrors\scripts\sync_agent_mirrors.py` - pass.
+- `py -3 -m unittest tests.test_init_project_agent` - pass, 1 test.
+- `py -3 .codex\skills\apex-sync-agent-mirrors\scripts\sync_agent_mirrors.py . --target all --write` - pass.
+- `rg` text-presence check for `fork_turns: "all"`, `叶子执行者`, required md docs, and no subagent redispatch - pass.
+- `git diff --check` over the touched rule, agent, mirror, test, and todo files - pass.
 
 ## Review Notes
 
-- This file is intentionally `status: pending` because the implementer and reviewer are not independent in this turn.
-- Set `status: ready`, `reviewer.role: human` or `independent-agent`, and close the finding after independent review.
+- This file intentionally remains `status: pending` because the implementer and reviewer are not independent in this turn.
+- Set `status: ready`, fill `reviewer.role`, and close `independent-review-required` only after independent or human review.

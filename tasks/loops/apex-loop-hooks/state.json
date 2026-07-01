@@ -1,32 +1,26 @@
 {
   "block_count_for_same_reason": 1,
   "changed_file_hashes": {
-    ".codex/skills/apex-init-project-agent/scripts/init_project_agent.py": "sha256:b03ad2062fd668b693a07408329a72b024fc32719f5afecf5974d6fd05b142c8",
-    "bin/apex.js": "sha256:4b9e349c396cb93993328a6986f752ce57b88152ac89d7a0b335e1e4445b40e5",
-    "scripts/check_apex_distribution.py": "sha256:e528c7c132d6c89d985a0c2e39ffb7745a7a489af4be52e6fc214fad43f30927",
-    "src/apexpowers_cli/cli.py": "sha256:29a8559b20053afc02ba8525d531c97786cf54756cf4da6e14cde4773c7bc25a",
-    "tests/test_apex_cli.py": "sha256:2eb87f932b123c8aff1d98ac602064ced2721131f6c31ba40fec3cd51a42430e"
+    ".codex/skills/apex-init-project-agent/scripts/init_project_agent.py": "sha256:22e69fd994a1e7f416de63b7ecee778713453c6b7da9ec4ed680dde9f139ca64",
+    "tests/test_init_project_agent.py": "sha256:9f92e0f30e216e742dd3389c77a3de10cd2ccbeff7166f78b1d7d514fcf9721c"
   },
   "changed_files": [
     ".codex/skills/apex-init-project-agent/scripts/init_project_agent.py",
-    "bin/apex.js",
-    "scripts/check_apex_distribution.py",
-    "src/apexpowers_cli/cli.py",
-    "tests/test_apex_cli.py"
+    "tests/test_init_project_agent.py"
   ],
   "continuation_count": 0,
   "created_review_request": false,
   "last_block_gate": "ReviewGate",
-  "last_block_reason_hash": "b00d5222620d8ef5629327771a5c9e74c92eec46b8bcc3cf54a078621f299e29",
-  "last_diff_hash": "eb22c7f13939609be44fa0d05bddd88170cfce87be541ab60fd1651d51eedb2d",
+  "last_block_reason_hash": "f317367ca16ffcf7caf523a37fe81b4c93b790dda5bf6a61aa3da4822ab117f8",
+  "last_diff_hash": "33ceea85a58a45c9fc38b06220c95dc52da21ec129ac744c0693a339ffbddbb8",
   "max_continuations": 0,
   "mode": "supervised",
   "phase": "review_required",
   "review": {
-    "attempts": 56,
+    "attempts": 60,
     "required": true,
     "review_path": "tasks/reviews/apex-loop-hooks.md",
-    "run_id": "019f17ba-0214-7023-a184-1c4a4afd47a3",
+    "run_id": "019f1b87-af65-7da0-8571-b553366af077",
     "status": "pending"
   },
   "review_path": "tasks/reviews/apex-loop-hooks.md",
@@ -34,6 +28,6 @@
   "slug": "apex-loop-hooks",
   "task_id": "apex-loop-hooks",
   "todo_path": "tasks/todo+apex-loop-hooks.md",
-  "updated_at": "2026-06-30T16:55:45+0800",
+  "updated_at": "2026-07-01T10:52:58+0800",
   "version": 1
 }
