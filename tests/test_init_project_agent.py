@@ -49,6 +49,12 @@ class InitProjectAgentTests(unittest.TestCase):
             self.assertIn("该计划就是本轮完成契约", content)
             self.assertIn("未完成项存在时，不得把任务描述为完成", content)
             self.assertIn("系统规则禁止自动 spawn", content)
+            self.assertIn("需求回声", content)
+            self.assertIn("我理解你真正要的是", content)
+            self.assertIn("两个以上合理解释", content)
+            self.assertIn("状态持久化", content)
+            self.assertIn("二次失败升级", content)
+            self.assertIn("确认前不得继续做同层补丁", content)
 
         self.assertIn("任务契约与证据化验收", agents_md)
         self.assertIn('禁止使用 `fork_turns: "all"`', claude_md)
