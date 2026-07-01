@@ -177,7 +177,7 @@ class ApexLoopHookTests(unittest.TestCase):
             cwd = Path(raw)
             self.init_repo(cwd)
             (cwd / "tasks").mkdir()
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
 
             result = self.run_hook(cwd, "session-start", "--host", "codex", payload={})
             payload = json.loads(result.stdout)
@@ -195,7 +195,7 @@ class ApexLoopHookTests(unittest.TestCase):
             (cwd / "src").mkdir()
             (cwd / "src" / "feature.py").write_text("print('hello')\n", encoding="utf-8")
             (cwd / "tasks" / "loops").mkdir(parents=True)
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
             (cwd / "tasks" / "loops" / "workflow.md").write_text(
                 "# Workflow\n\n[apex-state:review_required]\nCUSTOM REVIEW BLOCK\n[/apex-state:review_required]\n",
                 encoding="utf-8",
@@ -216,7 +216,7 @@ class ApexLoopHookTests(unittest.TestCase):
             (cwd / "src").mkdir()
             (cwd / "src" / "feature.py").write_text("print('hello')\n", encoding="utf-8")
             (cwd / "tasks" / "reviews").mkdir(parents=True)
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
             (cwd / "tasks" / "reviews" / "demo.md").write_text(
                 """+++
 schema_version = 1
@@ -488,7 +488,7 @@ role = "independent-agent"
             (cwd / "src").mkdir()
             (cwd / "src" / "feature.py").write_text("print('hello')\n", encoding="utf-8")
             (cwd / "tasks").mkdir()
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
 
             result = self.run_hook(cwd, "stop", "--host", "codex", "--route", "default", payload={})
             review_path = cwd / "tasks" / "reviews" / "demo.md"
@@ -504,6 +504,26 @@ role = "independent-agent"
         self.assertIn("Status**: Pending", review_text)
         self.assertEqual(state["phase"], "review_required")
 
+    def test_stop_blocks_unfinished_contract_checklist_before_review(self) -> None:
+        """ContractGate blocks completion while active todo checklist items remain open."""
+
+        with tempfile.TemporaryDirectory() as raw:
+            cwd = Path(raw)
+            self.init_repo(cwd)
+            (cwd / "src").mkdir()
+            (cwd / "src" / "feature.py").write_text("print('hello')\n", encoding="utf-8")
+            (cwd / "tasks").mkdir()
+            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [ ] Implement all slices\n", encoding="utf-8")
+
+            result = self.run_hook(cwd, "stop", "--host", "codex", "--route", "default", payload={})
+            review_exists = (cwd / "tasks" / "reviews" / "demo.md").exists()
+
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(json.loads(result.stdout)["decision"], "block")
+        self.assertIn("ContractGate", result.stdout)
+        self.assertIn("Implement all slices", result.stdout)
+        self.assertFalse(review_exists)
+
     def test_stop_blocks_ambiguous_todos_without_active_state(self) -> None:
         """ReviewGate does not bind code changes to the newest todo when task state is ambiguous."""
 
@@ -513,8 +533,8 @@ role = "independent-agent"
             (cwd / "src").mkdir()
             (cwd / "src" / "feature.py").write_text("print('hello')\n", encoding="utf-8")
             (cwd / "tasks").mkdir()
-            (cwd / "tasks" / "todo+alpha.md").write_text("# Alpha\n\n- [ ] Implement\n", encoding="utf-8")
-            (cwd / "tasks" / "todo+beta.md").write_text("# Beta\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+alpha.md").write_text("# Alpha\n\n- [x] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+beta.md").write_text("# Beta\n\n- [x] Implement\n", encoding="utf-8")
 
             result = self.run_hook(cwd, "stop", "--host", "codex", "--route", "default", payload={})
             beta_review_exists = (cwd / "tasks" / "reviews" / "beta.md").exists()
@@ -532,8 +552,8 @@ role = "independent-agent"
             (cwd / "src").mkdir()
             (cwd / "src" / "feature.py").write_text("print('hello')\n", encoding="utf-8")
             (cwd / "tasks" / "loops" / "alpha").mkdir(parents=True)
-            (cwd / "tasks" / "todo+alpha.md").write_text("# Alpha\n\n- [ ] Implement\n", encoding="utf-8")
-            (cwd / "tasks" / "todo+beta.md").write_text("# Beta\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+alpha.md").write_text("# Alpha\n\n- [x] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+beta.md").write_text("# Beta\n\n- [x] Implement\n", encoding="utf-8")
             (cwd / "tasks" / "loops" / "alpha" / "state.json").write_text(
                 json.dumps({"phase": "implementing", "todo_path": "tasks/todo+alpha.md"}),
                 encoding="utf-8",
@@ -556,8 +576,8 @@ role = "independent-agent"
             (cwd / "src" / "alpha").mkdir(parents=True)
             (cwd / "src" / "alpha" / "feature.py").write_text("print('alpha')\n", encoding="utf-8")
             (cwd / "tasks" / "loops").mkdir(parents=True)
-            (cwd / "tasks" / "todo+alpha.md").write_text("# Alpha\n\n- [ ] Implement\n", encoding="utf-8")
-            (cwd / "tasks" / "todo+beta.md").write_text("# Beta\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+alpha.md").write_text("# Alpha\n\n- [x] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+beta.md").write_text("# Beta\n\n- [x] Implement\n", encoding="utf-8")
             (cwd / "tasks" / "loops" / "active.json").write_text(
                 json.dumps(
                     {
@@ -605,7 +625,7 @@ role = "independent-agent"
             feature = cwd / "src" / "feature.py"
             feature.write_text("print('hello')\n", encoding="utf-8")
             (cwd / "tasks" / "reviews").mkdir(parents=True)
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
             digest = "sha256:" + hashlib.sha256(feature.read_bytes()).hexdigest()
             (cwd / "tasks" / "reviews" / "demo.md").write_text(
                 review_frontmatter("demo", {"src/feature.py": digest}, validation="automated-pass"),
@@ -626,7 +646,7 @@ role = "independent-agent"
             feature = cwd / "src" / "feature.py"
             feature.write_text("print('hello')\n", encoding="utf-8")
             (cwd / "tasks" / "reviews").mkdir(parents=True)
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
             digest = "sha256:" + hashlib.sha256(feature.read_bytes()).hexdigest()
             (cwd / "tasks" / "reviews" / "demo.md").write_text(
                 review_frontmatter("demo", {"src/feature.py": digest}, role="same-agent"),
@@ -648,7 +668,7 @@ role = "independent-agent"
             feature = cwd / "src" / "feature.py"
             feature.write_text("print('hello')\n", encoding="utf-8")
             (cwd / "tasks" / "reviews").mkdir(parents=True)
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
             digest = "sha256:" + hashlib.sha256(feature.read_bytes()).hexdigest()
             payload = json.dumps({"src/feature.py": digest}, sort_keys=True, separators=(",", ":"))
             diff_hash = "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -718,7 +738,7 @@ findings: []
             (cwd / "src").mkdir()
             (cwd / "src" / "feature.py").write_text("print('hello')\n", encoding="utf-8")
             (cwd / "tasks" / "reviews").mkdir(parents=True)
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
             review_path = cwd / "tasks" / "reviews" / "demo.md"
 
             feature = cwd / "src" / "feature.py"
@@ -741,7 +761,7 @@ findings: []
             self.init_repo(cwd)
             (cwd / "src").mkdir()
             (cwd / "tasks" / "reviews").mkdir(parents=True)
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
             (cwd / "tasks" / "reviews" / "demo.md").write_text(
                 review_frontmatter("demo", {"src/feature.py": "sha256:stale"}),
                 encoding="utf-8",
@@ -763,7 +783,7 @@ findings: []
             (cwd / "src").mkdir()
             (cwd / "src" / "feature.py").write_text("print('hello')\n", encoding="utf-8")
             (cwd / "tasks" / "reviews").mkdir(parents=True)
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
             (cwd / "tasks" / "reviews" / "demo.md").write_text(
                 """+++
 schema_version = 1

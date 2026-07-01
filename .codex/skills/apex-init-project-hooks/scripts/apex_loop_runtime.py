@@ -251,6 +251,48 @@ class MirrorDriftGuard:
         return findings
 
 
+class ContractGate:
+    """Stop gate that blocks completion when the active todo still has open work."""
+
+    _OPEN_CHECKBOX_PATTERN = re.compile(r"^\s*[-*]\s+\[\s\]\s+(.+?)\s*$")
+
+    def run(self, context: HookContext) -> StructuredFailure | None:
+        """Return a contract failure when active todo checklist items remain open."""
+
+        code_files = [path for path in context.changed_files() if is_reviewable_code_path(Path(path))]
+        if not code_files:
+            return None
+
+        task = active_task(context.repo_root)
+        if not task or task.ambiguous_reason:
+            return None
+
+        try:
+            todo_text = task.todo_path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            return None
+
+        open_items = self._open_items(todo_text)
+        if not open_items:
+            return None
+
+        preview = "; ".join(open_items[:3])
+        suffix = f" 等 {len(open_items)} 项" if len(open_items) > 3 else ""
+        todo_rel = task.todo_path.relative_to(context.repo_root).as_posix()
+        return StructuredFailure(
+            "ContractGate",
+            f"{task.slug} active todo 仍有未完成 checklist: {preview}{suffix}。",
+            f"先完成、跳过并说明原因，或标记 blocker；更新 {todo_rel} 后再 final。未完成项存在时不得把任务描述为完成。",
+            "contract_failure",
+            context.run_id,
+        )
+
+    def _open_items(self, text: str) -> list[str]:
+        """Markdown checklist item labels that are still unchecked."""
+
+        return [match.group(1).strip(" `") for line in text.splitlines() if (match := self._OPEN_CHECKBOX_PATTERN.match(line))]
+
+
 class ReviewGate:
     """Stop gate that requires review evidence after code changes."""
 
@@ -404,6 +446,7 @@ class ApexLoopRuntime:
         self._secret_content = SecretContentGuard()
         self._line_lengths = LineLengthGuard()
         self._mirror_drift = MirrorDriftGuard()
+        self._contract_gate = ContractGate()
         self._review_gate = ReviewGate()
         self._session_context = SessionContextBuilder()
 
@@ -511,6 +554,10 @@ class ApexLoopRuntime:
         if line_blockers:
             record_stop_blocker(context.repo_root, slug, line_blockers[0], diff_hash)
             return emit_failure(context, line_blockers[0], stop_decision=True)
+        contract_failure = self._contract_gate.run(context)
+        if contract_failure:
+            record_stop_blocker(context.repo_root, slug, contract_failure, diff_hash)
+            return emit_failure(context, contract_failure, stop_decision=True)
         failure = self._review_gate.run(context)
         if failure:
             record_stop_blocker(context.repo_root, slug, failure, diff_hash)

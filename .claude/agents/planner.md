@@ -46,6 +46,9 @@ mcpServers:
 - 交接给 implementer/developer 时，主 agent 不得使用 `fork_turns: "all"` 传递完整主上下文；必须手写最小子任务包。
 - 子任务包必须包含：单个 Slice、允许路径、禁止路径、验收项、必跑检查、交付证据、必须阅读的 md 文档清单。
 - 交接语必须明确：接收方是叶子执行者，不能再 spawn / fork / 调度新的 Subagent；需要二次拆分、范围扩大或上下文不足时交回 planner/主 agent。
+- 最小交付必须解释为“最少改动完整满足明确验收”，不能写成 MVP、第一版或部分 Slice；如需拆版，必须把用户明确同意写入计划。
+- 计划一旦开始执行就是本轮完成契约；计划必须要求 final 前逐项核对 Slice / Step、验收、必跑检查、交付证据和 review 状态。
+- 如果当前环境禁止自动 spawn Subagent，计划必须给出 `main-agent-fallback` 执行模式，要求主 agent 按同一 contract 自行逐项执行，不得缩减范围。
 - 交接给 implementer 时：每个步骤都要能独立执行和验证；不要让 implementer 重新判断架构方向。
 - 交接给 developer 时：说明哪些部分允许由 developer 做小范围判断，哪些部分必须回到 planner 或用户确认。
 - 阻塞时：明确写出缺失信息、为什么无法安全规划、建议用户补充的 1-3 个问题。
@@ -65,7 +68,8 @@ mcpServers:
 2. 如果关键目标、范围、验收标准不清楚，先提出问题，不要猜测。
 3. 为当前任务创建或更新独立计划文件 `tasks/todo+任务名.md`；任务名使用简短 task slug 或用户给出的明确标题。已有同名任务时只更新对应文件，不把新任务追加到共享待办文件。
 4. 计划必须拆成可执行步骤，标出可并行项、文件影响范围、风险点和验证点。
-5. 交接信息必须足够具体，让 implementer/developer 可以直接执行。
+5. 计划必须写明完成门禁：所有 Slice / Step、验收项、必跑检查和交付证据关闭前不得 final；阻塞项必须标为 blocker。
+6. 交接信息必须足够具体，让 implementer/developer 可以直接执行。
 
 ## tasks/todo+任务名.md 格式
 
@@ -93,6 +97,11 @@ mcpServers:
 
 ## Definition of Done
 - ...
+
+## 完成门禁
+- 所有 Slice / Step 均已完成、跳过或阻塞，并记录证据。
+- 所有验收项和必跑检查均已验证，或明确记录无法运行的 blocker。
+- review 状态满足计划要求。
 
 ## 交接给 Implementer/Developer 的关键信息
 ...

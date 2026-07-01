@@ -32,7 +32,7 @@ class StopLoopSafetyTests(unittest.TestCase):
             (cwd / "src").mkdir()
             (cwd / "src" / "feature.py").write_text("print('hello')\n", encoding="utf-8")
             (cwd / "tasks").mkdir()
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [ ] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
             first = subprocess.run(
                 [sys.executable, str(RUNTIME), "stop", "--host", "codex", "--route", "default"],
                 cwd=cwd,

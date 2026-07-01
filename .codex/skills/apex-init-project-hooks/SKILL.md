@@ -11,7 +11,7 @@ description: 为已有项目安装 ApexPowers loop hooks。默认把 hook 配置
 
 Hook 配置和 runtime 默认安装到对应 agent 根目录：Codex 使用 `CODEX_HOME` 或 `~/.codex`，Claude Code 使用 `CLAUDE_HOME` 或 `~/.claude`。项目目录只保留 `tasks/loops/`、`tasks/reviews/`、`tasks/lessons.md` 等 loop 状态。
 
-只做确定性 loop 门禁：危险命令 / secrets、写入后行数检查、`.agents` 镜像漂移提醒、Stop review gate、SessionStart 状态摘要。不要在 hook 脚本里递归启动 Codex 或 Claude Code。
+只做确定性 loop 门禁：危险命令 / secrets、写入后行数检查、`.agents` 镜像漂移提醒、Stop contract checklist gate、Stop review gate、SessionStart 状态摘要。不要在 hook 脚本里递归启动 Codex 或 Claude Code。
 
 ## 生成目标
 
@@ -72,6 +72,7 @@ py -3 .codex\skills\apex-init-project-hooks\scripts\apex_loop.py render-config c
 - `PreToolUse`、`PostToolUse`、`Stop` 才能在确定性证据足够时介入；PostToolUse 不能撤销已完成工具，只能反馈并标记后续清理要求。
 - 每个 block / strong warning 都必须包含 `guard`、`reason`、`fix`、`failure_class`、`run_id`，并写入已忽略的 failure JSONL。
 - PostToolUse 发现 secret-like 内容时写入 `tasks/loops/security-required.json`；Stop 会在该状态清理前阻塞完成。
+- Stop contract checklist gate 在存在代码 diff 时读取 active `tasks/todo+<slug>.md`；如果仍有未完成 `- [ ]` checklist，会先于 review gate 阻塞完成。纯 todo 规划变更不会触发该 gate。
 - Stop review gate 读取 `tasks/reviews/<slug>.md` 的结构化 frontmatter；新 review request 使用 YAML，旧 TOML frontmatter 兼容读取。放行要求 `status: ready`、`validation: pass` 或 `automated-pass`、`reviewed_diff_hash` 覆盖当前 diff、`required_checks.exit_code = 0`，且 reviewer role / id 满足风险级别。
 - `stop_hook_active=true` 时不递归创建 review request；state.json 记录 `last_block_reason_hash`、`block_count_for_same_reason`、`continuation_count`、`max_continuations`、`created_review_request`，相同 Stop blocker 会允许本轮以 blocked / follow-up-required 状态结束，而不是继续空转。
 - `PostToolUse` 使用 diff-aware 路径、guard file-hash cache 和 failure dedupe；支持 `PostToolBatch/default` 复用同一检查逻辑，降低并发/批量工具调用时的重复扫描和重复 failures。
