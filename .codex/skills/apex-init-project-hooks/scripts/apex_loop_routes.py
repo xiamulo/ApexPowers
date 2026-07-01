@@ -99,7 +99,6 @@ class RouteRegistry:
             ),
             Route("PostToolUse", "edit", "post-tool-use", "post_tool_use", "Edit|Write|MultiEdit|apply_patch", "Edit|Write|MultiEdit"),
             Route("PostToolUse", "bash", "post-tool-use", "post_tool_use", "Bash|Shell|PowerShell", "Bash|Shell|PowerShell"),
-            Route("PostToolUse", "always", "post-tool-use", "post_tool_use"),
             Route("PostToolBatch", "default", "post-tool-batch", "post_tool_use"),
             Route("PreCompact", "default", "pre-compact", "pre_compact", "auto|manual", "auto|manual"),
             Route("Stop", "default", "stop", "stop"),

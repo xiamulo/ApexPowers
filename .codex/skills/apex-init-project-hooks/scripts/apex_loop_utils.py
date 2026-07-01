@@ -212,6 +212,7 @@ class HookContext:
         self.host = host
         self.route = route
         self.run_id = hook_input.run_id()
+        self._changed_files: list[str] | None = None
 
     @classmethod
     def create(cls, args: Any) -> "HookContext":
@@ -320,12 +321,15 @@ class HookContext:
     def changed_files(self) -> list[str]:
         """Changed and untracked files relative to HEAD."""
 
+        if self._changed_files is not None:
+            return list(self._changed_files)
         names: set[str] = set()
         for args in (["diff", "--name-only", "--diff-filter=ACMRT", "HEAD"], ["ls-files", "--others", "--exclude-standard"]):
             result = self.git(args)
             if result.returncode == 0:
                 names.update(line.strip().replace("\\", "/") for line in result.stdout.splitlines() if line.strip())
-        return sorted(names)
+        self._changed_files = sorted(names)
+        return list(self._changed_files)
 
 
 
@@ -1559,20 +1563,15 @@ def workflow_status(repo_root: Path, changed: list[str] | None = None) -> str:
         return "no_task"
 
     changed_files = changed if changed is not None else git_changed_files(repo_root)
-    slug = task.slug
-    review_path = repo_root / "tasks" / "reviews" / f"{slug}.md"
-    status = review_status(review_path)
-    validation = validation_status(review_path)
     code_changed = any(is_reviewable_code_path(Path(path)) for path in changed_files)
 
-    if status == "ready":
-        if validation not in {"pass", "automated-pass"}:
-            return "validation_required"
-        return "done" if review_covers_current_code(repo_root, slug, review_path, [path for path in changed_files if is_reviewable_code_path(Path(path))]) else "review_required"
-    if status in {"pending", "issues"} or code_changed:
-        return "review_required"
+    if code_changed:
+        return "implementing"
 
+    slug = task.slug
     state_phase = loop_state_phase(repo_root, slug)
+    if state_phase in {"review_required", "validation_required"}:
+        return "implementing"
     if state_phase:
         return state_phase
     return "planning"
@@ -1626,8 +1625,8 @@ def fallback_workflow_body(status: str) -> str:
         "planning": "An active todo exists. Clarify scope and validation before changing code.",
         "implementing": "Implementation is in progress. Keep changes scoped and preserve user edits.",
         "security_required": "A completed tool produced secret-like content. Remove it, rotate any real credential, and verify cleanup before completion.",
-        "review_required": "Code changes require review before completion.",
-        "validation_required": "Review is ready, but validation evidence is missing or failing.",
+        "review_required": "Explicit review is requested. Inspect the diff and active todo before completion.",
+        "validation_required": "Explicit review is ready, but validation evidence is missing or failing.",
         "done": "Review and validation are complete.",
     }
     return bodies.get(status, "Continue with the current Apex loop state.")
@@ -1649,18 +1648,6 @@ def compact_blockers(repo_root: Path, changed: list[str], task: ActiveTask | Non
         blockers.append("security_required")
     if task and task.ambiguous_reason:
         blockers.append("ambiguous_active_task")
-    if code_changed and not task:
-        blockers.append("missing_active_task")
-    if task and code_changed:
-        review_path = task.review_path or repo_root / "tasks" / "reviews" / f"{task.slug}.md"
-        status = review_status(review_path)
-        validation = validation_status(review_path)
-        if status != "ready":
-            blockers.append(f"review_{status}")
-        elif validation not in {"pass", "automated-pass"}:
-            blockers.append(f"validation_{validation}")
-        elif not review_covers_current_code(repo_root, task.slug, review_path, code_changed):
-            blockers.append("stale_review_diff")
     for raw_path in changed:
         rel_path = Path(raw_path)
         if not is_source_file(rel_path) or is_generated_exception(rel_path):
@@ -1762,7 +1749,7 @@ def active_stop_blocker_message(repo_root: Path, slug: str) -> str:
     return (
         f"Apex Stop gate is already active for unresolved {gate} "
         f"(same blocker count: {count}, continuation count: {continuation_count}). End this turn as blocked / follow-up-required, not done; "
-        "do not create another review request or claim completion until the blocker is cleared."
+        "do not claim completion until the blocker is cleared."
     )
 
 

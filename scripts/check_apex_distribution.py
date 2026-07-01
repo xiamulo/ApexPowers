@@ -400,7 +400,7 @@ def check_parallel_delivery_orchestration(root: Path) -> Check:
         "code-reviewer",
         "perf-optimizer",
         "official agent mirrors",
-        "Stop review request gate",
+        "explicit review gate",
         "Validation: Pass",
         "overlapping uncommitted changes",
     )

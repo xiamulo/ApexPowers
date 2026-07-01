@@ -15,7 +15,7 @@
 | 1 | 安装和分发还不像产品 | 部分真实 | 已有 installer dry-run/write/update/uninstall、doctor、thin plugin manifests、commands、distribution checker、tests | 默认安装仍是复制 skills 和跑脚本；没有 npx/pipx/marketplace/plugin install/profile install/update channel/release artifact |
 | 2 | 31 个 Codex skills 有膨胀风险 | 真实 | 仓库清楚记录当前 31 个 skills，也有 private/public 项目的提交建议 | 没有 profile manifest 或默认最小包；`.codex-plugin` 暴露整个 `./.codex/skills/` |
 | 3 | MCP 和外部系统弱 | 真实 | agent 模板和镜像保留 MCP 使用规则；跨宿主矩阵已经标注状态 | Generic MCP host 是 Planned；Claude plugin `mcpServers` 为空；OpenCode/Gemini/Copilot/Cursor/Windsurf 多为 Planned 或 instruction fallback |
-| 4 | 缺少 worktree/issue/PR 级并行交付协议 | 基本真实 | 有 6 个角色模板、官方 agent 镜像、`apex-to-issues` issue 拆分、Stop review request gate | 没有显式 orchestration command；没有 worktree/branch/PR/merge/rollback 协议和测试 |
+| 4 | 缺少 worktree/issue/PR 级并行交付协议 | 基本真实 | 有 6 个角色模板、官方 agent 镜像、`apex-to-issues` issue 拆分、显式 review gate | 没有显式 orchestration command；没有 worktree/branch/PR/merge/rollback 协议和测试 |
 | 5 | benchmark 没证明“效果” | 真实，但这是当前 benchmark 的明确设计 | 已有 distribution reliability benchmark，且刻意避免虚假节省声明 | 没有 task pass rate、review catch rate、false positive、time-to-green、token cost、rollback rate 等 outcome 指标 |
 
 ## 1. 安装和分发

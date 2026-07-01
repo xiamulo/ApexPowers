@@ -135,7 +135,7 @@ class ApexDistributionTests(unittest.TestCase):
 
         self.assertEqual(missing_check.status, "fail")
         self.assertIn("apex-to-issues", missing_check.details["missing"])
-        self.assertIn("Stop review request gate", missing_check.details["missing"])
+        self.assertIn("explicit review gate", missing_check.details["missing"])
 
 
 if __name__ == "__main__":

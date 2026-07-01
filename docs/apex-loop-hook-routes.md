@@ -33,10 +33,9 @@ py -3 "<hook-root>/apex_loop.py" <command> --host <codex|claude> --route <route-
 | `PreToolUse` | `safety-shell` | `Bash|Shell|PowerShell` | `pre-tool-use` | shell 执行前拦截危险命令、破坏性 git、远程脚本管道执行、明显 shell 写入里的疑似密钥；命中时阻止工具执行。 |
 | `PostToolUse` | `edit` | `Edit|Write|MultiEdit|apply_patch` | `post-tool-use` | 编辑后扫描相关路径，检查 secret 内容、源码有效行数和 agent mirror drift；secret 会要求跟进清理，行数和镜像漂移先 warn。 |
 | `PostToolUse` | `bash` | `Bash|Shell|PowerShell` | `post-tool-use` | shell 后根据 redirect / PowerShell 写入目标或 git changed files 回看文件，做同一组后置检查。 |
-| `PostToolUse` | `always` | 无 | `post-tool-use` | 每次工具后兜底观察 changed files，覆盖非 edit/bash 工具造成的文件变化。 |
 | `PostToolBatch` | `default` | 无 | `post-tool-batch` | 批量工具调用后复用 `post-tool-use` 检查逻辑，配合 cache / dedupe 减少重复噪声。 |
 | `PreCompact` | `default` | `auto|manual` | `pre-compact` | context compaction 前写入 `tasks/loops/session-snapshot.json`，并把快照位置注入上下文；只提示，不阻塞。 |
-| `Stop` | `default` | 无 | `stop` | agent 准备结束时执行收口门禁；security、mirror drift、行数硬上限、review、validation、stale diff 等问题会阻止结束。 |
+| `Stop` | `default` | 无 | `stop` | agent 准备结束时执行轻量收口门禁；security、mirror drift、行数硬上限会阻止结束。默认不阻塞 review、validation 或 stale diff。 |
 
 ## SessionStart
 
@@ -52,7 +51,7 @@ py -3 "<hook-root>/apex_loop.py" session-start --host codex --route default
 | --- | --- | --- |
 | Branch | `git branch --show-current` | 让 agent 知道当前分支。 |
 | Changed files | git diff + untracked files | 提醒当前 worktree 是否已经有改动。 |
-| Workflow state | `tasks/loops/workflow.md`、active task、review、validation、diff | 提醒当前处于 planning / review_required / validation_required / done 等状态。 |
+| Workflow state | `tasks/loops/workflow.md`、active task、security state、diff | 提醒当前处于 planning / implementing / security_required / done 等状态。默认不会因为代码 diff 自动进入 review_required / validation_required。 |
 | Active todo candidates | 最近修改的 `tasks/todo+*.md` | 帮助 agent 选择当前任务上下文。 |
 | Review attention | `tasks/reviews/*.md` | 提醒 pending / invalid / validation-missing 的 review 文件。 |
 | Recent lessons | `tasks/lessons.md` | 注入最近经验教训。 |
@@ -70,8 +69,8 @@ py -3 "<hook-root>/apex_loop.py" user-prompt-submit --host codex --route default
 它始终输出一个 XML-like 状态块：
 
 ```xml
-<apex-workflow-state status="review_required" source="tasks/loops/workflow.md">
-Code changes require review before completion.
+<apex-workflow-state status="implementing" source="tasks/loops/workflow.md">
+Implementation is in progress. Keep changes scoped and preserve user edits.
 </apex-workflow-state>
 ```
 
@@ -83,8 +82,8 @@ Code changes require review before completion.
 | `planning` | 有 active todo，但尚未进入实现或 review。 | 明确范围、验收和验证方式。 |
 | `implementing` | loop state 标记实现中。 | 按 todo 小步推进并验证。 |
 | `security_required` | `tasks/loops/security-required.json` 存在。 | 清理疑似密钥内容，真实凭据需要轮换。 |
-| `review_required` | 有代码 diff 且 review 未 ready，或 review 已过期。 | 读取 diff 和 active todo，更新 `tasks/reviews/<slug>.md`。 |
-| `validation_required` | review ready 但 validation 缺失或未通过。 | 运行验证，把证据写入 review frontmatter。 |
+| `review_required` | 兼容旧 state 文件或未来 strict mode；默认不会仅因代码 diff 进入。 | 按团队显式流程 review，不由默认 Stop 自动创建 request。 |
+| `validation_required` | 兼容旧 state 文件或未来 strict mode；默认不会仅因 review frontmatter 进入。 | 按团队显式流程验证，不由默认 Stop 自动阻塞。 |
 | `done` | review 和 validation 覆盖当前 diff。 | 可以结束任务或进入提交流程。 |
 
 它还会根据 prompt 文本输出 route hint：
@@ -93,7 +92,7 @@ Code changes require review before completion.
 | --- | --- |
 | 包含 `review`、`审查`、`验收`、`检查` | 优先读取 active todo、diff 和 `tasks/reviews`，再调用 reviewer。 |
 | 包含 `plan`、`计划`、`方案`、`todo` | 可以先写 `tasks/todo+任务名.md`，确认范围后再实现。 |
-| 包含 `完成`、`收工`、`done`、`提交` | 提醒 Stop gate 会检查 diff、review 和验证证据。 |
+| 包含 `完成`、`收工`、`done`、`提交` | 提醒 Stop gate 会检查 security、mirror drift 和行数硬上限；review / validation 由显式流程或 CI 负责。 |
 
 这个 hook 只提示，不阻塞 prompt。
 
@@ -199,10 +198,6 @@ Bash|Shell|PowerShell
 
 它和 `edit` 走同一套后置检查，只是路径提取更依赖 shell 命令文本和 git fallback。设计原因是 shell 也可能通过 redirect、脚本、formatter、generator 修改文件。
 
-### always
-
-没有 matcher，作为兜底 route。它保证即使某个 host 的工具名没被 `edit` / `bash` matcher 覆盖，hook 仍会从 git changed files 观察当前 worktree。
-
 ### PostToolUse 输出语义
 
 | 情况 | 输出 | 后续影响 |
@@ -260,28 +255,28 @@ tasks/loops/session-snapshot.json
 py -3 "<hook-root>/apex_loop.py" stop --host codex --route default
 ```
 
-Stop 的检查顺序是：
+默认 Stop 的检查顺序是：
 
 1. `security_required_failure`：如果 PostToolUse 已经发现疑似 secret 内容，阻塞。
 2. `MirrorDriftGuard`：如果 `.agents/*.md` 改了但 Codex / Claude 镜像没同步，阻塞。
 3. `LineLengthGuard`：对 changed source files 做硬上限检查；本次新增或跨过 hard limit 的文件阻塞。
-4. `ReviewGate`：有 reviewable code diff 时，要求 active todo 和 review 文件满足合约。
-5. `ValidationGate`：review ready 后必须有通过的验证证据。
+
+Contract checklist、ReviewGate 和 ValidationGate 默认停用：Stop 不会因为未完成 checklist、缺 review 文件、validation missing、reviewer role 或 stale reviewed hash 阻塞。相关实现保留在 runtime 中，供未来显式 strict mode 使用。
 
 Stop 成功时 exit 0。失败时输出：
 
 ```json
 {
   "decision": "block",
-  "reason": "[ReviewGate] demo 有代码 diff，但还没有通过 code-reviewer review。 Fix: ..."
+  "reason": "[LineLengthGuard] src/feature.py 有效代码行数超过硬上限。 Fix: 拆分文件或减少职责后再结束。"
 }
 ```
 
-### ReviewGate 什么时候触发
+### ReviewGate 默认状态
 
-`ReviewGate` 只关心 reviewable code path。文档、todo-only 改动通常不会触发 code review gate。
+`ReviewGate` 代码仍存在，但默认 Stop 不实例化、不调用它，也不会自动创建 `tasks/reviews/<slug>.md`。需要 review 的团队流程应该显式调用 reviewer、CI 或并行交付协议，而不是依赖默认 loop hook 阻塞小任务完成。
 
-触发后会先找 active task：
+旧 strict 语义保留如下，便于未来恢复：
 
 | 情况 | 行为 |
 | --- | --- |
@@ -289,7 +284,7 @@ Stop 成功时 exit 0。失败时输出：
 | 存在多个 todo 但没有 active state | fail closed，报告 `ambiguous_task`。 |
 | 没有 todo | 不创建 review request，允许普通无任务代码外场景继续。 |
 
-如果 review 文件缺失，Stop 会创建：
+旧 strict mode 下如果 review 文件缺失，Stop 会创建：
 
 ```text
 tasks/reviews/<slug>.md
@@ -421,27 +416,25 @@ python .codex\skills\apex-sync-agent-mirrors\scripts\sync_agent_mirrors.py . --t
 | --- | --- | --- |
 | `tasks/loops/workflow.md` | installer / 用户 | 可编辑 workflow state 文案，按 `[apex-state:<state>]...[/apex-state:<state>]` 匹配。 |
 | `tasks/loops/active.json` | 用户 / 编排器 / agent | 多 todo 或多任务时显式声明 active tasks、owned paths、review path、risk level。 |
-| `tasks/loops/<slug>/state.json` | Stop / ReviewGate | 记录 review attempts、changed files、hash、last blocker、continuation count。 |
+| `tasks/loops/<slug>/state.json` | Stop / strict ReviewGate | 记录 active task、changed files/hash、last blocker、continuation count；strict review 字段仅在显式 review workflow 使用。 |
 | `tasks/loops/security-required.json` | PostToolUse secret guard | 记录疑似 secret 写入后的清理要求。存在时 workflow 为 `security_required`。 |
 | `tasks/loops/session-snapshot.json` | PreCompact | compaction 前保存可恢复上下文。 |
 | `tasks/loops/failures.jsonl` | guards | 全局结构化 failure / warning 记录。 |
 | `tasks/loops/<slug>/failures.jsonl` | guards | task 级结构化 failure / warning 记录。 |
-| `tasks/reviews/<slug>.md` | Stop 创建，reviewer 更新 | review request、scope、review / validation 放行合约。 |
+| `tasks/reviews/<slug>.md` | 显式 review workflow 创建，reviewer 更新 | review request、scope、review / validation 放行合约。默认 Stop 不自动创建。 |
 | `tasks/lessons.md` | 用户 / agent | SessionStart 注入最近 lessons。 |
 
 ## 典型流程
 
 ### 1. 正常实现任务
 
-1. `SessionStart` 注入当前 branch、changed files、active todo 和 review 状态。
+1. `SessionStart` 注入当前 branch、changed files、active todo 和 review 摘要。
 2. `UserPromptSubmit` 提示当前 workflow state。
 3. agent 编辑文件时，`PreToolUse.safety-write` 先拦截明显危险路径或密钥内容。
 4. 编辑完成后，`PostToolUse.edit` 扫描 secret、行数和 mirror drift。
-5. agent 准备结束时，`Stop.default` 发现有 code diff 和 active todo，但 review 未 ready。
-6. Stop 创建或更新 `tasks/reviews/<slug>.md` 和 `tasks/loops/<slug>/state.json`，然后 block。
-7. reviewer 审查并把 review frontmatter 更新为 `status: ready`。
-8. agent 运行验证，把 `validation: pass` 和 required checks `exit_code: 0` 写入 review。
-9. 再次 Stop 时，如果 diff hash 仍覆盖当前代码，允许结束。
+5. agent 准备结束时，`Stop.default` 只检查 security cleanup、mirror drift 和行数硬上限。
+6. 如果这些轻量门禁通过，默认 Stop 允许结束；review / validation 由显式流程、CI 或人工要求负责。
+7. 大交付或 strict workflow 可单独创建 `tasks/reviews/<slug>.md`，让 reviewer 更新 frontmatter 和验证证据。
 
 ### 2. 修改 agent 模板
 
@@ -473,9 +466,9 @@ Hook 配置不能只靠文档生效，必须由 `apex-init-project-hooks` 安装
 | 现象 | 可能原因 | 处理 |
 | --- | --- | --- |
 | 新会话没有 Apex Loop Context | hook 没装到 host 实际加载的配置，或未 trust。 | 重新 dry-run / install `apex-init-project-hooks`，检查 Codex / Claude 配置和 trust 状态。 |
-| 每次 prompt 都出现 `review_required` | 有 code diff，且 active review 未 ready 或 diff hash 过期。 | 查看 `tasks/reviews/<slug>.md`，补 review / validation，或重新审查当前 diff。 |
-| Stop 创建 review 后仍阻塞 | 这是预期行为；创建 request 不等于 review 通过。 | 调用 reviewer，更新 frontmatter。 |
-| review ready 但 Stop 仍阻塞 | validation 缺失、required checks 没有 `exit_code: 0`、reviewer role 不合规、或代码又改了。 | 按 Stop 输出的 guard reason 修正 review frontmatter。 |
+| 每次 prompt 都出现 `review_required` | 旧 state 文件或显式 strict workflow 把 phase 标记为 review_required。 | 继续显式 review，或在确认不需要 strict review 后把 loop state phase 改回 `implementing`。 |
+| 期望 Stop 创建 review 但没有创建 | 默认 review/validation gate 已停用。 | 显式调用 reviewer、CI 或并行交付协议；不要依赖默认 Stop 创建 review request。 |
+| review ready 但 Stop 没有检查 validation | 默认 review/validation gate 已停用。 | 用显式 strict workflow、CI 或人工 review 作为最终质量门禁。 |
 | 修改 `.agents/*.md` 后不能结束 | mirror drift。 | 运行 `sync_agent_mirrors.py . --target all --write`。 |
 | PostToolUse 报 line length | 文件超过有效行数提醒线。 | 拆分职责；若跨过 hard limit，Stop 会阻塞。 |
 | 出现 `security_required` | PostToolUse 发现疑似 secret 已写入。 | 移除内容，确认是否需要轮换真实凭据，再重新验证。 |

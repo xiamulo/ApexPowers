@@ -108,10 +108,9 @@ class ApexLoopHookTests(unittest.TestCase):
         self.assertIn("PostToolBatch", config["hooks"])
         self.assertIn("PreCompact", config["hooks"])
         self.assertIn("Stop", config["hooks"])
-        self.assertEqual(len(config["hooks"]["PostToolUse"]), 3)
+        self.assertEqual(len(config["hooks"]["PostToolUse"]), 2)
         self.assertEqual(config["hooks"]["PostToolUse"][0]["matcher"], "Edit|Write|MultiEdit|apply_patch")
         self.assertEqual(config["hooks"]["PostToolUse"][1]["matcher"], "Bash|Shell|PowerShell")
-        self.assertNotIn("matcher", config["hooks"]["PostToolUse"][2])
         self.assertEqual(len(config["hooks"]["PostToolBatch"]), 1)
         command = config["hooks"]["SessionStart"][0]["hooks"][0]["command"]
         self.assertTrue(command.startswith(f'{PYTHON_LAUNCHER} ".codex/hooks/apex_loop.py"'), command)
@@ -186,8 +185,8 @@ class ApexLoopHookTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Workflow state: planning", context_text)
 
-    def test_workflow_state_uses_custom_workflow_block(self) -> None:
-        """Editable workflow.md blocks are injected for the inferred state."""
+    def test_workflow_state_uses_custom_implementing_block(self) -> None:
+        """Editable workflow.md blocks are injected from explicit loop state."""
 
         with tempfile.TemporaryDirectory() as raw:
             cwd = Path(raw)
@@ -195,20 +194,25 @@ class ApexLoopHookTests(unittest.TestCase):
             (cwd / "src").mkdir()
             (cwd / "src" / "feature.py").write_text("print('hello')\n", encoding="utf-8")
             (cwd / "tasks" / "loops").mkdir(parents=True)
+            (cwd / "tasks" / "loops" / "demo").mkdir(parents=True)
             (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
+            (cwd / "tasks" / "loops" / "demo" / "state.json").write_text(
+                json.dumps({"phase": "implementing", "slug": "demo"}),
+                encoding="utf-8",
+            )
             (cwd / "tasks" / "loops" / "workflow.md").write_text(
-                "# Workflow\n\n[apex-state:review_required]\nCUSTOM REVIEW BLOCK\n[/apex-state:review_required]\n",
+                "# Workflow\n\n[apex-state:implementing]\nCUSTOM IMPLEMENTING BLOCK\n[/apex-state:implementing]\n",
                 encoding="utf-8",
             )
 
             result = self.run_hook(cwd, "user-prompt-submit", "--host", "codex", payload={"prompt": "继续"})
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('status="review_required"', result.stdout)
-        self.assertIn("CUSTOM REVIEW BLOCK", result.stdout)
+        self.assertIn('status="implementing"', result.stdout)
+        self.assertIn("CUSTOM IMPLEMENTING BLOCK", result.stdout)
 
-    def test_workflow_state_detects_validation_required(self) -> None:
-        """Ready reviews without validation move the workflow into validation_required."""
+    def test_workflow_state_ignores_review_validation_by_default(self) -> None:
+        """Prompt advisory state does not scan review validation by default."""
 
         with tempfile.TemporaryDirectory() as raw:
             cwd = Path(raw)
@@ -238,7 +242,8 @@ role = "independent-agent"
             result = self.run_hook(cwd, "user-prompt-submit", "--host", "codex", payload={"prompt": "完成了吗"})
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('status="validation_required"', result.stdout)
+        self.assertIn('status="planning"', result.stdout)
+        self.assertNotIn('status="validation_required"', result.stdout)
 
     def test_pre_tool_use_blocks_dangerous_git(self) -> None:
         """Dangerous destructive commands fail closed."""
@@ -479,8 +484,8 @@ role = "independent-agent"
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def test_stop_creates_review_request_for_code_diff(self) -> None:
-        """Stop gate creates a review request and blocks completion."""
+    def test_stop_allows_code_diff_without_review_request_by_default(self) -> None:
+        """Review/completion gates are disabled in the default loop."""
 
         with tempfile.TemporaryDirectory() as raw:
             cwd = Path(raw)
@@ -494,18 +499,12 @@ role = "independent-agent"
             review_path = cwd / "tasks" / "reviews" / "demo.md"
             state_path = cwd / "tasks" / "loops" / "demo" / "state.json"
 
-            self.assertTrue(review_path.exists())
-            review_text = review_path.read_text(encoding="utf-8")
-            state = json.loads(state_path.read_text(encoding="utf-8"))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(review_path.exists())
+        self.assertFalse(state_path.exists())
 
-        self.assertEqual(result.returncode, 2)
-        self.assertEqual(json.loads(result.stdout)["decision"], "block")
-        self.assertIn("ReviewGate", result.stdout)
-        self.assertIn("Status**: Pending", review_text)
-        self.assertEqual(state["phase"], "review_required")
-
-    def test_stop_blocks_unfinished_contract_checklist_before_review(self) -> None:
-        """ContractGate blocks completion while active todo checklist items remain open."""
+    def test_stop_allows_unfinished_contract_checklist_by_default(self) -> None:
+        """Contract checklist completion is advisory in the default loop."""
 
         with tempfile.TemporaryDirectory() as raw:
             cwd = Path(raw)
@@ -518,14 +517,11 @@ role = "independent-agent"
             result = self.run_hook(cwd, "stop", "--host", "codex", "--route", "default", payload={})
             review_exists = (cwd / "tasks" / "reviews" / "demo.md").exists()
 
-        self.assertEqual(result.returncode, 2)
-        self.assertEqual(json.loads(result.stdout)["decision"], "block")
-        self.assertIn("ContractGate", result.stdout)
-        self.assertIn("Implement all slices", result.stdout)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertFalse(review_exists)
 
-    def test_stop_blocks_ambiguous_todos_without_active_state(self) -> None:
-        """ReviewGate does not bind code changes to the newest todo when task state is ambiguous."""
+    def test_stop_ignores_ambiguous_todos_by_default(self) -> None:
+        """Ambiguous todos no longer block Stop when review gates are disabled."""
 
         with tempfile.TemporaryDirectory() as raw:
             cwd = Path(raw)
@@ -539,12 +535,11 @@ role = "independent-agent"
             result = self.run_hook(cwd, "stop", "--host", "codex", "--route", "default", payload={})
             beta_review_exists = (cwd / "tasks" / "reviews" / "beta.md").exists()
 
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("ambiguous_task", result.stdout)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertFalse(beta_review_exists)
 
-    def test_stop_uses_active_loop_state_when_multiple_todos_exist(self) -> None:
-        """Loop state selects the review slug when multiple todo files exist."""
+    def test_stop_does_not_create_active_loop_review_request_by_default(self) -> None:
+        """Active loop state remains available but does not force review creation."""
 
         with tempfile.TemporaryDirectory() as raw:
             cwd = Path(raw)
@@ -563,12 +558,12 @@ role = "independent-agent"
             alpha_review_exists = (cwd / "tasks" / "reviews" / "alpha.md").exists()
             beta_review_exists = (cwd / "tasks" / "reviews" / "beta.md").exists()
 
-        self.assertEqual(result.returncode, 2)
-        self.assertTrue(alpha_review_exists)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(alpha_review_exists)
         self.assertFalse(beta_review_exists)
 
-    def test_stop_uses_active_json_owned_paths_when_multiple_todos_exist(self) -> None:
-        """active.json owned_paths selects the review slug in parallel task scenarios."""
+    def test_stop_does_not_create_owned_path_review_request_by_default(self) -> None:
+        """Owned-path task selection does not create review requests in default mode."""
 
         with tempfile.TemporaryDirectory() as raw:
             cwd = Path(raw)
@@ -611,12 +606,12 @@ role = "independent-agent"
             alpha_review_exists = (cwd / "tasks" / "reviews" / "alpha.md").exists()
             beta_review_exists = (cwd / "tasks" / "reviews" / "beta.md").exists()
 
-        self.assertEqual(result.returncode, 2)
-        self.assertTrue(alpha_review_exists)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(alpha_review_exists)
         self.assertFalse(beta_review_exists)
 
-    def test_stop_allows_automated_pass_validation(self) -> None:
-        """ReviewGate accepts automated-pass validation when checks passed."""
+    def test_stop_ignores_review_validation_and_reviewer_by_default(self) -> None:
+        """Review files do not block Stop in the default loop."""
 
         with tempfile.TemporaryDirectory() as raw:
             cwd = Path(raw)
@@ -628,7 +623,7 @@ role = "independent-agent"
             (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
             digest = "sha256:" + hashlib.sha256(feature.read_bytes()).hexdigest()
             (cwd / "tasks" / "reviews" / "demo.md").write_text(
-                review_frontmatter("demo", {"src/feature.py": digest}, validation="automated-pass"),
+                review_frontmatter("demo", {"src/feature.py": digest}, validation="missing", role="same-agent"),
                 encoding="utf-8",
             )
 
@@ -636,76 +631,25 @@ role = "independent-agent"
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def test_stop_blocks_same_agent_reviewer_for_medium_risk(self) -> None:
-        """ReviewGate requires independent reviewer roles for normal risk."""
+    def test_stop_ignores_stale_review_hash_by_default(self) -> None:
+        """Stale reviewed hashes are ignored unless strict review mode is reintroduced."""
 
         with tempfile.TemporaryDirectory() as raw:
             cwd = Path(raw)
             self.init_repo(cwd)
             (cwd / "src").mkdir()
-            feature = cwd / "src" / "feature.py"
-            feature.write_text("print('hello')\n", encoding="utf-8")
             (cwd / "tasks" / "reviews").mkdir(parents=True)
             (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
-            digest = "sha256:" + hashlib.sha256(feature.read_bytes()).hexdigest()
             (cwd / "tasks" / "reviews" / "demo.md").write_text(
-                review_frontmatter("demo", {"src/feature.py": digest}, role="same-agent"),
+                review_frontmatter("demo", {"src/feature.py": "sha256:stale"}),
                 encoding="utf-8",
             )
+            time.sleep(0.05)
+            (cwd / "src" / "feature.py").write_text("print('changed after review')\n", encoding="utf-8")
 
             result = self.run_hook(cwd, "stop", "--host", "codex", "--route", "default", payload={})
 
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("reviewer.role", result.stdout)
-
-    def test_stop_blocks_same_implementer_and_reviewer_id(self) -> None:
-        """ReviewGate rejects a reviewer id that matches the implementer id."""
-
-        with tempfile.TemporaryDirectory() as raw:
-            cwd = Path(raw)
-            self.init_repo(cwd)
-            (cwd / "src").mkdir()
-            feature = cwd / "src" / "feature.py"
-            feature.write_text("print('hello')\n", encoding="utf-8")
-            (cwd / "tasks" / "reviews").mkdir(parents=True)
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
-            digest = "sha256:" + hashlib.sha256(feature.read_bytes()).hexdigest()
-            payload = json.dumps({"src/feature.py": digest}, sort_keys=True, separators=(",", ":"))
-            diff_hash = "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
-            (cwd / "tasks" / "reviews" / "demo.md").write_text(
-                f"""---
-schema_version: 1
-task_id: demo
-slug: demo
-status: ready
-validation: pass
-reviewed_diff_hash: "{diff_hash}"
-risk_level: medium
-reviewer:
-  id: agent-1
-  role: independent-agent
-implementer:
-  id: agent-1
-reviewed_file_hashes:
-  "src/feature.py": "{digest}"
-validation_evidence:
-  required_checks:
-    - name: tests
-      command: manual
-      exit_code: 0
-      recorded_at: now
-findings: []
----
-
-# Review
-""",
-                encoding="utf-8",
-            )
-
-            result = self.run_hook(cwd, "stop", "--host", "codex", "--route", "default", payload={})
-
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("reviewer.role", result.stdout)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_stop_hook_active_reports_blocked_status_without_new_gate(self) -> None:
         """Stop hook recursion guard lets the turn end as blocked without creating more work."""
@@ -729,8 +673,8 @@ findings: []
         self.assertEqual(state["max_continuations"], 0)
         self.assertIn("last_block_reason_hash", state)
 
-    def test_stop_respects_review_ready_and_critical_states(self) -> None:
-        """Review ready allows Stop while Critical findings block it."""
+    def test_stop_ignores_review_ready_and_critical_states_by_default(self) -> None:
+        """Review file content is advisory in the default loop."""
 
         with tempfile.TemporaryDirectory() as raw:
             cwd = Path(raw)
@@ -750,62 +694,7 @@ findings: []
             critical_result = self.run_hook(cwd, "stop", "--host", "codex", "--route", "default", payload={})
 
         self.assertEqual(ready_result.returncode, 0, ready_result.stdout + ready_result.stderr)
-        self.assertEqual(critical_result.returncode, 2)
-        self.assertIn("ReviewGate", critical_result.stdout)
-
-    def test_stop_blocks_stale_ready_review_after_new_code_diff(self) -> None:
-        """Ready reviews do not cover code changes made after review evidence."""
-
-        with tempfile.TemporaryDirectory() as raw:
-            cwd = Path(raw)
-            self.init_repo(cwd)
-            (cwd / "src").mkdir()
-            (cwd / "tasks" / "reviews").mkdir(parents=True)
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
-            (cwd / "tasks" / "reviews" / "demo.md").write_text(
-                review_frontmatter("demo", {"src/feature.py": "sha256:stale"}),
-                encoding="utf-8",
-            )
-            time.sleep(0.05)
-            (cwd / "src" / "feature.py").write_text("print('changed after review')\n", encoding="utf-8")
-
-            result = self.run_hook(cwd, "stop", "--host", "codex", "--route", "default", payload={})
-
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("ReviewGate", result.stdout)
-
-    def test_stop_requires_validation_after_review_ready(self) -> None:
-        """Ready review without validation evidence still blocks Stop."""
-
-        with tempfile.TemporaryDirectory() as raw:
-            cwd = Path(raw)
-            self.init_repo(cwd)
-            (cwd / "src").mkdir()
-            (cwd / "src" / "feature.py").write_text("print('hello')\n", encoding="utf-8")
-            (cwd / "tasks" / "reviews").mkdir(parents=True)
-            (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
-            (cwd / "tasks" / "reviews" / "demo.md").write_text(
-                """+++
-schema_version = 1
-task_id = "demo"
-slug = "demo"
-status = "ready"
-validation = "missing"
-risk_level = "medium"
-
-[reviewer]
-role = "independent-agent"
-+++
-
-# Review
-""",
-                encoding="utf-8",
-            )
-
-            result = self.run_hook(cwd, "stop", "--host", "codex", "--route", "default", payload={})
-
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("ValidationGate", result.stdout)
+        self.assertEqual(critical_result.returncode, 0, critical_result.stdout + critical_result.stderr)
 
     def test_stop_ignores_todo_only_changes(self) -> None:
         """Todo-only planning does not trigger review gate."""

@@ -1,32 +1,46 @@
 {
   "block_count_for_same_reason": 1,
   "changed_file_hashes": {
-    ".codex/skills/apex-init-project-agent/scripts/init_project_agent.py": "sha256:98c5106a267ab471fc711ea43b7140ed4d92a55ac896fef30c35da50de33d464",
-    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_runtime.py": "sha256:71a8cdd4817ee64e4997d54b5823921db46edacae6c38226508eba570367452f",
-    "tests/apex_hooks/test_stop_loop_safety.py": "sha256:a2edb6bb3e05100ebfe979e6c69ca340163d345fdb972a9e6820bc74bc621246",
-    "tests/test_apex_loop_hooks.py": "sha256:963d7811dc8c28dfdf21ec1aca7bcfa7807adfd58c1d46e0c63b9ecde1dc823d",
-    "tests/test_init_project_agent.py": "sha256:851ea500d5754bea49fb062751bd20de3a75a1e36e55995ead237c4570b5a55e"
+    ".codex/skills/apex-init-project-agent/scripts/init_project_agent.py": "sha256:169e820dbb6ab88422443244225aca471cdd14476b334e0d4c267a9d3a831814",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_routes.py": "sha256:a0f32cb17ada997c30ecd59d0cd1c4ef3d02b282bcf73e0b6023492e6467fd21",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_runtime.py": "sha256:636034c6d26e67a8e2b80b9f9f1d1adc022976bef08e5bce8f7b8cfd55485a4f",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_utils.py": "sha256:c5179d8b7a6afe63b6d0c07a6cabeec34eb6780576df2bd29c0cb31d506be85a",
+    ".codex/skills/apex-init-project-hooks/scripts/init_project_hooks.py": "sha256:998255e73adfba56093939a1204f7ba25599eeafde1f05ef6b908fb61080fa5f",
+    "scripts/check_apex_distribution.py": "sha256:0ec161e0efa9136c1bf71ff4fca819d0dc1e65cad73b3c28acbcd087a83853d3",
+    "tests/apex_hooks/test_post_tool_use_semantics.py": "sha256:50eda225524e1657290b3ce8d5c6c188dfe5c4fd64f41b03dccdc63e131a348e",
+    "tests/apex_hooks/test_stop_loop_safety.py": "sha256:5a38cbbef3f80291b873394203a2c664f451fa0e848b62ffef7a8f56433076da",
+    "tests/test_apex_distribution.py": "sha256:b1d76cdf227036ecb50f9e2e350461ea063e6309817b37749815a57316e7eca9",
+    "tests/test_apex_loop_hooks.py": "sha256:a0a8f0f829ae8847ced2f7ce25856bda9ab39c126fd84006d593c574329de85d",
+    "tests/test_apex_loop_installer.py": "sha256:871619d78cf0bd56f8c912b470c0b7c08a0dbf3189c9618586be12a443a5dc7b",
+    "tests/test_init_project_agent.py": "sha256:1bca9a30e5beed61029fa08780f6c3fb91066afc1f588050f490afc7183063fc"
   },
   "changed_files": [
     ".codex/skills/apex-init-project-agent/scripts/init_project_agent.py",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_routes.py",
     ".codex/skills/apex-init-project-hooks/scripts/apex_loop_runtime.py",
+    ".codex/skills/apex-init-project-hooks/scripts/apex_loop_utils.py",
+    ".codex/skills/apex-init-project-hooks/scripts/init_project_hooks.py",
+    "scripts/check_apex_distribution.py",
+    "tests/apex_hooks/test_post_tool_use_semantics.py",
     "tests/apex_hooks/test_stop_loop_safety.py",
+    "tests/test_apex_distribution.py",
     "tests/test_apex_loop_hooks.py",
+    "tests/test_apex_loop_installer.py",
     "tests/test_init_project_agent.py"
   ],
   "continuation_count": 0,
   "created_review_request": false,
   "last_block_gate": "ReviewGate",
-  "last_block_reason_hash": "5ed8e10cd667280680291a4564fdc1492bff66e2a931c44510d66d486ac4aafd",
-  "last_diff_hash": "07db8c8f78a814f6fe123cc821bef38e47136859e582233aa330cb978ea3a5d2",
+  "last_block_reason_hash": "c97b0b35902e1359dfa9e5a44442d7d8bd6c51536cc32786e08ea1abec48fc70",
+  "last_diff_hash": "271acf9d74ae4654d6522fb48ff372b9714404e282e8e3db9e48ccdf2f182c66",
   "max_continuations": 0,
   "mode": "supervised",
   "phase": "review_required",
   "review": {
-    "attempts": 62,
+    "attempts": 64,
     "required": true,
     "review_path": "tasks/reviews/apex-loop-hooks.md",
-    "run_id": "019f1d0c-c88f-70a0-823d-e7b1f608727b",
+    "run_id": "019f1db9-6982-78c2-8b41-fc0765978418",
     "status": "pending"
   },
   "review_path": "tasks/reviews/apex-loop-hooks.md",
@@ -34,6 +48,6 @@
   "slug": "apex-loop-hooks",
   "task_id": "apex-loop-hooks",
   "todo_path": "tasks/todo+apex-loop-hooks.md",
-  "updated_at": "2026-07-01T18:06:20+0800",
+  "updated_at": "2026-07-01T21:46:28+0800",
   "version": 1
 }

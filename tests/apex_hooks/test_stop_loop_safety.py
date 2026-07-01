@@ -30,7 +30,7 @@ class StopLoopSafetyTests(unittest.TestCase):
             cwd = Path(raw)
             self.init_repo(cwd)
             (cwd / "src").mkdir()
-            (cwd / "src" / "feature.py").write_text("print('hello')\n", encoding="utf-8")
+            (cwd / "src" / "large.py").write_text("\n".join(f"print({index})" for index in range(751)) + "\n", encoding="utf-8")
             (cwd / "tasks").mkdir()
             (cwd / "tasks" / "todo+demo.md").write_text("# Demo\n\n- [x] Implement\n", encoding="utf-8")
             first = subprocess.run(
@@ -44,7 +44,6 @@ class StopLoopSafetyTests(unittest.TestCase):
                 stderr=subprocess.PIPE,
                 check=False,
             )
-            review_mtime = (cwd / "tasks" / "reviews" / "demo.md").stat().st_mtime
             result = subprocess.run(
                 [sys.executable, str(RUNTIME), "stop", "--host", "codex", "--route", "default"],
                 cwd=cwd,
@@ -59,13 +58,12 @@ class StopLoopSafetyTests(unittest.TestCase):
             payload = json.loads(result.stdout)
             state = json.loads((cwd / "tasks" / "loops" / "demo" / "state.json").read_text(encoding="utf-8"))
 
-            self.assertEqual((cwd / "tasks" / "reviews" / "demo.md").stat().st_mtime, review_mtime)
-
         self.assertEqual(first.returncode, 2)
         self.assertEqual(result.returncode, 0)
         self.assertEqual(payload["status"], "blocked")
         self.assertIn("not done", payload["reason"])
-        self.assertTrue(state["created_review_request"])
+        self.assertEqual(state["last_block_gate"], "LineLengthGuard")
+        self.assertFalse((cwd / "tasks" / "reviews" / "demo.md").exists())
         self.assertEqual(state["continuation_count"], 1)
         self.assertEqual(state["max_continuations"], 0)
 
@@ -100,7 +98,7 @@ class StopLoopSafetyTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(snapshot_payload["schema_version"], 1)
         self.assertEqual(snapshot_payload["workflow_state"], "security_required")
-        self.assertIn("review_missing", snapshot_payload["blockers"])
+        self.assertNotIn("review_missing", snapshot_payload["blockers"])
         self.assertIn("security_required", snapshot_payload["blockers"])
         self.assertTrue(snapshot_payload["security_required"])
         self.assertIn("hookSpecificOutput", result.stdout)

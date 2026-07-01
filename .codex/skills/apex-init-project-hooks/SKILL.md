@@ -11,7 +11,7 @@ description: 为已有项目安装 ApexPowers loop hooks。默认把 hook 配置
 
 Hook 配置和 runtime 默认安装到对应 agent 根目录：Codex 使用 `CODEX_HOME` 或 `~/.codex`，Claude Code 使用 `CLAUDE_HOME` 或 `~/.claude`。项目目录只保留 `tasks/loops/`、`tasks/reviews/`、`tasks/lessons.md` 等 loop 状态。
 
-只做确定性 loop 门禁：危险命令 / secrets、写入后行数检查、`.agents` 镜像漂移提醒、Stop contract checklist gate、Stop review gate、SessionStart 状态摘要。不要在 hook 脚本里递归启动 Codex 或 Claude Code。
+只做轻量确定性 loop 门禁：危险命令 / secrets、写入后行数检查、`.agents` 镜像漂移提醒、SessionStart 状态摘要。默认不启用 Stop contract checklist gate、Stop review gate 或 validation gate；这些实现保留给未来显式 strict mode。不要在 hook 脚本里递归启动 Codex 或 Claude Code。
 
 ## 生成目标
 
@@ -62,7 +62,7 @@ py -3 .codex\skills\apex-init-project-hooks\scripts\apex_loop.py render-config c
 ## Workflow-state
 
 - Installer 会创建 `tasks/loops/workflow.md`，使用 `[apex-state:*]...[/apex-state:*]` 状态块。
-- Runtime 当前支持 `no_task`、`planning`、`implementing`、`security_required`、`review_required`、`validation_required`、`done`。
+- Runtime 当前支持 `no_task`、`planning`、`implementing`、`security_required`、`review_required`、`validation_required`、`done`，但默认 workflow 推导不会因为普通代码 diff 自动进入 `review_required` / `validation_required`。
 - `SessionStart` 会注入当前 workflow state 摘要；`UserPromptSubmit` 会输出完整 `<apex-workflow-state>` block。
 - 如果 `workflow.md` 缺失或状态块缺失，runtime 使用显式 fallback，不会静默失败。
 
@@ -72,8 +72,8 @@ py -3 .codex\skills\apex-init-project-hooks\scripts\apex_loop.py render-config c
 - `PreToolUse`、`PostToolUse`、`Stop` 才能在确定性证据足够时介入；PostToolUse 不能撤销已完成工具，只能反馈并标记后续清理要求。
 - 每个 block / strong warning 都必须包含 `guard`、`reason`、`fix`、`failure_class`、`run_id`，并写入已忽略的 failure JSONL。
 - PostToolUse 发现 secret-like 内容时写入 `tasks/loops/security-required.json`；Stop 会在该状态清理前阻塞完成。
-- Stop contract checklist gate 在存在代码 diff 时读取 active `tasks/todo+<slug>.md`；如果仍有未完成 `- [ ]` checklist，会先于 review gate 阻塞完成。纯 todo 规划变更不会触发该 gate。
-- Stop review gate 读取 `tasks/reviews/<slug>.md` 的结构化 frontmatter；新 review request 使用 YAML，旧 TOML frontmatter 兼容读取。放行要求 `status: ready`、`validation: pass` 或 `automated-pass`、`reviewed_diff_hash` 覆盖当前 diff、`required_checks.exit_code = 0`，且 reviewer role / id 满足风险级别。
+- 默认 Stop 只保留安全、secret cleanup、agent mirror drift 和行数硬上限阻塞；不会因为未完成 todo checklist、缺 review 文件、validation 缺失或 reviewed hash 过期而阻塞。
+- ContractGate、ReviewGate、ValidationGate 代码仍保留在 runtime 中，但默认不实例化、不调用、不创建 `tasks/reviews/<slug>.md`。如果未来加 strict mode，再显式恢复这些门禁。
 - `stop_hook_active=true` 时不递归创建 review request；state.json 记录 `last_block_reason_hash`、`block_count_for_same_reason`、`continuation_count`、`max_continuations`、`created_review_request`，相同 Stop blocker 会允许本轮以 blocked / follow-up-required 状态结束，而不是继续空转。
 - `PostToolUse` 使用 diff-aware 路径、guard file-hash cache 和 failure dedupe；支持 `PostToolBatch/default` 复用同一检查逻辑，降低并发/批量工具调用时的重复扫描和重复 failures。
 

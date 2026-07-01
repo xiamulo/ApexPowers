@@ -46,7 +46,7 @@
 | 文件 | 用途 |
 | --- | --- |
 | `docs/apex-agent-portability.md` | ApexPowers 跨宿主适配矩阵。区分 skill-capable、command-capable、lifecycle-hook-capable 和 instruction-only 宿主。 |
-| `docs/apex-parallel-delivery-orchestration.md` | worktree / issue / PR 级并行交付编排协议。串起 6 个角色模板、官方 agent 镜像、`apex-to-issues` 和 Stop review request gate。 |
+| `docs/apex-parallel-delivery-orchestration.md` | worktree / issue / PR 级并行交付编排协议。串起 6 个角色模板、官方 agent 镜像、`apex-to-issues` 和显式 review gate。 |
 | `docs/platform-native-solutions.md` | 平台原生能力清单。供 `apex-lean-review` 和 reviewer 判断是否需要依赖、抽象或自定义实现。 |
 | `docs/supply-chain-trust-security.md` | 供应链、hook trust、威胁模型、生成文件 provenance、update/uninstall 破坏性边界、无遥测和 secret/path guard false-positive 策略。 |
 | `docs/supply-chain-manifest.sha256` | trust-critical 分发文件的 byte-level SHA-256 manifest，用于 release review 漂移检测。 |
@@ -85,7 +85,7 @@
 | `apex_loop.py` | hook runtime 命令入口。把当前目录加入 `sys.path` 后调用核心 dispatcher。 |
 | `apex_loop_core.py` | 兼容导出层。暴露 `HostConfigRenderer`、`RouteRegistry` 和 `main`。 |
 | `apex_loop_routes.py` | Route registry 与 host config 渲染源头。定义 SessionStart、UserPromptSubmit、PreToolUse 分流、PostToolUse、PostToolBatch、PreCompact、Stop 路由。 |
-| `apex_loop_runtime.py` | 运行时 guard 实现。包含写前安全门禁、PostToolUse security-required 反馈、行数门禁、secret 内容检查、镜像漂移检查、PreCompact snapshot 和 review/validation gate。 |
+| `apex_loop_runtime.py` | 运行时 guard 实现。包含写前安全门禁、PostToolUse security-required 反馈、行数门禁、secret 内容检查、镜像漂移检查、PreCompact snapshot，以及默认停用的 strict review/validation gate 实现。 |
 | `apex_loop_utils.py` | HookInput、HookContext、路径规范化、workflow 状态推导、active.json 任务选择、结构化 review 文件读写、guard cache、失败日志去重和辅助函数。 |
 
 ## Hook 模板与安装产物
@@ -113,10 +113,10 @@
 | --- | --- |
 | `tasks/todo+apex-loop-hooks.md` | 当前 Apex loop hooks 改造计划，记录目标、非目标、架构、hook 规则、阶段计划和 DoD。 |
 | `tasks/todo+apex-ponytail-production.md` | 从 Ponytail 借鉴分发层做法的生产化计划，覆盖跨宿主、薄 manifest、lean review、平台原生清单、漂移测试和 benchmark 方法。 |
-| `tasks/reviews/apex-loop-hooks.md` | 对 active todo 的 review gate 文件。Stop gate 读取结构化 frontmatter；新 review request 使用 YAML，旧 TOML 兼容读取。要求 `status: ready`、`validation: pass` / `"automated-pass"`、reviewed diff hash 匹配、required checks 通过、reviewer role/id 满足风险级别。 |
+| `tasks/reviews/apex-loop-hooks.md` | 显式 review / strict workflow 的 review 文件。结构化 frontmatter 使用 YAML，旧 TOML 兼容读取；默认 Stop 不再读取它作为完成门禁。 |
 | `tasks/research+trellis-apexpowers-opportunities.md` | 对 Trellis 方案的源码对照研究，记录 ApexPowers 可借鉴模块和不建议照搬的部分。 |
 | `tasks/lessons.md` | loop hooks 注入的近期经验记录来源。 |
-| `tasks/loops/apex-loop-hooks/state.json` | 机器可读 loop 状态，记录 phase、review attempts、changed files/hash、review request 创建状态、Stop blocker hash 和 continuation 计数。 |
+| `tasks/loops/apex-loop-hooks/state.json` | 机器可读 loop 状态，记录 phase、changed files/hash、Stop blocker hash 和 continuation 计数；review attempts 字段仅兼容旧 strict gate。 |
 
 ## Vendored 前端 / 动画 / 测试 Skills
 
@@ -198,7 +198,7 @@
 
 | 文件 | 用途 |
 | --- | --- |
-| `tests/test_apex_loop_hooks.py` | 验证 hook runtime 路由、上下文注入、安全门禁、行数门禁、secrets、镜像漂移和 Stop review gate。 |
+| `tests/test_apex_loop_hooks.py` | 验证 hook runtime 路由、上下文注入、安全门禁、行数门禁、secrets、镜像漂移和默认 Stop 不强制 review/validation。 |
 | `tests/test_apex_loop_installer.py` | 验证 hook installer 的 agent-root 默认安装、项目级兼容、JSON 合并、幂等、update、uninstall、manifest 和 legacy migration。 |
 | `tests/test_apex_doctor.py` | 验证 apex-doctor 的只读健康检查和 manifest/config/runtime 一致性判断。 |
 | `tests/test_apex_distribution.py` | 验证 plugin manifests、commands、跨宿主文档、lean skill、platform-native 清单和 benchmark 方法没有漂移。 |

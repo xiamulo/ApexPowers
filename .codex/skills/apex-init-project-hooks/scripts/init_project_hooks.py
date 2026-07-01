@@ -245,11 +245,11 @@ A completed tool produced secret-like content. Remove the content, rotate any re
 [/apex-state:security_required]
 
 [apex-state:review_required]
-Code changes require review. Inspect the diff and active todo, then create or update `tasks/reviews/<slug>.md` with review status.
+Explicit review is requested. Inspect the diff and active todo, then create or update `tasks/reviews/<slug>.md` with review status.
 [/apex-state:review_required]
 
 [apex-state:validation_required]
-Review is ready, but validation evidence is incomplete. Run the relevant checks, then set review frontmatter `validation` to `pass` or `automated-pass` and record required check exit codes.
+Explicit review is ready, but validation evidence is incomplete. Run the relevant checks, then set review frontmatter `validation` to `pass` or `automated-pass` and record required check exit codes.
 [/apex-state:validation_required]
 
 [apex-state:done]

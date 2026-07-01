@@ -36,7 +36,6 @@ from apex_loop_utils import (
     record_stop_blocker,
     review_covers_current_code,
     security_required_failure,
-    reset_stop_blocker,
     resolve_workflow_state,
     review_status,
     should_skip_generated_or_large,
@@ -226,10 +225,10 @@ class SecretContentGuard:
 class MirrorDriftGuard:
     """Detect source agent changes without generated mirror changes."""
 
-    def check(self, context: HookContext, block: bool) -> list[StructuredFailure]:
+    def check(self, context: HookContext, block: bool, paths: list[Path] | None = None) -> list[StructuredFailure]:
         """Return mirror drift findings."""
 
-        changed = set(context.changed_files())
+        changed = {path.as_posix() for path in paths} if paths is not None else set(context.changed_files())
         findings: list[StructuredFailure] = []
         for source in sorted(path for path in changed if path.startswith(".agents/") and path.endswith(".md")):
             name = Path(source).stem
@@ -446,8 +445,6 @@ class ApexLoopRuntime:
         self._secret_content = SecretContentGuard()
         self._line_lengths = LineLengthGuard()
         self._mirror_drift = MirrorDriftGuard()
-        self._contract_gate = ContractGate()
-        self._review_gate = ReviewGate()
         self._session_context = SessionContextBuilder()
 
     def session_start(self, context: HookContext) -> int:
@@ -460,7 +457,7 @@ class ApexLoopRuntime:
     def user_prompt_submit(self, context: HookContext) -> int:
         """Emit advisory route hints only."""
 
-        print(workflow_state_context(context.repo_root, context.changed_files()))
+        print(workflow_state_context(context.repo_root, []))
         hint = prompt_hint(context.hook_input.prompt_text())
         if hint:
             print(f"[ApexLoopRoute] {hint}")
@@ -490,13 +487,13 @@ class ApexLoopRuntime:
     def post_tool_use(self, context: HookContext) -> int:
         """Run lightweight checks on files reported by the edit hook."""
 
-        paths = context_paths_diff_aware(context, fallback_to_changed=True)
+        paths = context_paths_diff_aware(context, fallback_to_changed=False)
         secret_failure = self._secret_content.check(context, paths) if paths else None
         if secret_failure:
             mark_security_required(context.repo_root, secret_failure, context.run_id)
             return emit_failure(context, secret_failure)
         findings = self._line_lengths.check(context, paths, block_hard_limit=False) if paths else []
-        findings.extend(self._mirror_drift.check(context, block=False))
+        findings.extend(self._mirror_drift.check(context, block=False, paths=paths))
         for finding in findings:
             emit_warning_or_log(context, finding)
         return 0
@@ -516,54 +513,57 @@ class ApexLoopRuntime:
         return 0
 
     def stop(self, context: HookContext) -> int:
-        """Run completion gates."""
+        """Run lightweight completion guards."""
 
-        task = active_task(context.repo_root)
-        slug = task.slug if task and not task.ambiguous_reason else "session"
-        if context.hook_input.payload.get("stop_hook_active") is True:
+        def record_blocker(finding: StructuredFailure, *, stop_hook_active: bool = False) -> None:
+            task = active_task(context.repo_root)
+            slug = task.slug if task and not task.ambiguous_reason else "session"
             diff_hash = context.current_diff_hash(context.changed_files())
+            record_stop_blocker(context.repo_root, slug, finding, diff_hash, stop_hook_active=stop_hook_active)
+
+        if context.hook_input.payload.get("stop_hook_active") is True:
             security_failure = security_required_failure(context.repo_root, context.run_id)
             if security_failure:
-                record_stop_blocker(context.repo_root, slug, security_failure, diff_hash, stop_hook_active=True)
+                record_blocker(security_failure, stop_hook_active=True)
             else:
                 drift = [finding for finding in self._mirror_drift.check(context, block=True) if finding.action == "block"]
                 if drift:
-                    record_stop_blocker(context.repo_root, slug, drift[0], diff_hash, stop_hook_active=True)
+                    record_blocker(drift[0], stop_hook_active=True)
                 else:
                     changed_paths = [Path(path) for path in context.changed_files()]
                     line_blockers = [finding for finding in self._line_lengths.check(context, changed_paths, block_hard_limit=True) if finding.action == "block"]
                     if line_blockers:
-                        record_stop_blocker(context.repo_root, slug, line_blockers[0], diff_hash, stop_hook_active=True)
+                        record_blocker(line_blockers[0], stop_hook_active=True)
                     else:
+                        task = active_task(context.repo_root)
+                        slug = task.slug if task and not task.ambiguous_reason else "session"
                         record_active_stop_continuation(context.repo_root, slug)
+            task = active_task(context.repo_root)
+            slug = task.slug if task and not task.ambiguous_reason else "session"
             message = active_stop_blocker_message(context.repo_root, slug)
             if message:
                 print(json.dumps({"decision": "allow", "status": "blocked", "reason": message}, ensure_ascii=False))
             return 0
-        diff_hash = context.current_diff_hash(context.changed_files())
         security_failure = security_required_failure(context.repo_root, context.run_id)
         if security_failure:
-            record_stop_blocker(context.repo_root, slug, security_failure, diff_hash)
+            record_blocker(security_failure)
             return emit_failure(context, security_failure, stop_decision=True)
         drift = [finding for finding in self._mirror_drift.check(context, block=True) if finding.action == "block"]
         if drift:
-            record_stop_blocker(context.repo_root, slug, drift[0], diff_hash)
+            record_blocker(drift[0])
             return emit_failure(context, drift[0], stop_decision=True)
         changed_paths = [Path(path) for path in context.changed_files()]
         line_blockers = [finding for finding in self._line_lengths.check(context, changed_paths, block_hard_limit=True) if finding.action == "block"]
         if line_blockers:
-            record_stop_blocker(context.repo_root, slug, line_blockers[0], diff_hash)
+            record_blocker(line_blockers[0])
             return emit_failure(context, line_blockers[0], stop_decision=True)
-        contract_failure = self._contract_gate.run(context)
-        if contract_failure:
-            record_stop_blocker(context.repo_root, slug, contract_failure, diff_hash)
-            return emit_failure(context, contract_failure, stop_decision=True)
-        failure = self._review_gate.run(context)
-        if failure:
-            record_stop_blocker(context.repo_root, slug, failure, diff_hash)
-            return emit_failure(context, failure, stop_decision=True)
-        if task and not task.ambiguous_reason:
-            reset_stop_blocker(context.repo_root, task.slug)
+        # Review/completion gates are intentionally disabled in the default loop:
+        # they made small downstream-project tasks pay the full review contract cost.
+        # Keep the implementations available for future strict mode, but do not
+        # block Stop on todo checklists, review files, validation evidence, or
+        # stale reviewed hashes.
+        # contract_failure = self._contract_gate.run(context)
+        # failure = self._review_gate.run(context)
         return 0
 
     def check_line_length(self, context: HookContext, paths: list[str]) -> int:

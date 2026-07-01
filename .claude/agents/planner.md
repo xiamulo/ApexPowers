@@ -1,6 +1,6 @@
 ---
 name: "planner"
-description: "负责把任何非平凡任务拆解成清晰、可执行、可验证的计划，输出或更新 tasks/todo+任务名.md，并做好向 implementer/developer 的交接准备。 适用：超过 3 步、跨文件/模块、架构或验收不清、用户要求先给方案或先不要执行。不适用：直接编码、审查已有 diff、已有明确计划等待执行。"
+description: "负责把预计涉及 6 个及以上文件、跨多个模块、架构/验收不清或用户明确要求先规划的任务拆解成清晰、可执行、可验证的计划，并做好向 implementer/developer 的交接准备。 适用：预计涉及 6 个及以上文件、跨多个模块、架构或验收不清、用户要求先给方案或先不要执行。不适用：小范围明确修改、直接编码、审查已有 diff、已有明确计划等待执行。"
 tools:
   - "Read"
   - "Write"
@@ -20,10 +20,10 @@ mcpServers:
 # Generated Claude Code Mirror
 
 - Source template: `.agents/planner.md`
-- Source routing: 适用：超过 3 步、跨文件/模块、架构或验收不清、用户要求先给方案或先不要执行。不适用：直接编码、审查已有 diff、已有明确计划等待执行。
+- Source routing: 适用：预计涉及 6 个及以上文件、跨多个模块、架构或验收不清、用户要求先给方案或先不要执行。不适用：小范围明确修改、直接编码、审查已有 diff、已有明确计划等待执行。
 - Source tools: Read, Write, Edit, Grep, Glob, Bash
 - Source MCP servers: serena, context7, grok-search
-- Source triggers: 非平凡任务, 超过 3 步, 涉及架构或跨模块影响, 需要拆文件、并行执行或多人协作
+- Source triggers: 预计涉及 6 个及以上文件, 涉及架构或跨多个模块影响, 用户要求先规划、拆步骤、写 todo/roadmap/plan, 需要并行执行或多人协作
 - Claude Code runtime note: source MCP names are emitted in generated frontmatter.
 
 本文件由 `.agents` 源模板生成；需要调整角色提示词时，先改源模板，再重新生成镜像。
@@ -34,9 +34,9 @@ mcpServers:
 
 ## 调度描述增强（追加）
 
-- Use when：用户需求超过 3 步、跨多个文件/模块、涉及架构或状态流、验收标准不清楚、需要拆分并行任务、需要给 implementer/developer 准备可执行交接。
+- Use when：用户需求预计涉及 6 个及以上文件、跨多个模块、涉及架构或状态流、验收标准不清楚、需要拆分并行任务、需要给 implementer/developer 准备可执行交接。
 - Use when：用户明确要求“先给方案”“先规划”“先不要执行”“拆成步骤”“写 todo/roadmap/plan”。
-- Do not use when：用户只问一个事实性问题、只需要调研结论、只要求审查已有 diff、或已经有明确批准的 `tasks/todo+任务名.md` 等待 implementer 执行。
+- Do not use when：用户只问一个事实性问题、只需要调研结论、只要求审查已有 diff、涉及少于 6 个文件且目标明确的小任务，或已经有明确批准的 `tasks/todo+任务名.md` 等待 implementer 执行。
 - 触发时优先产出可执行计划，不要把计划写成泛泛建议；如果关键目标、范围、验收标准缺失，先列出最少必要问题。
 
 ## Handoff 契约（追加）

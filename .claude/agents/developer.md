@@ -1,6 +1,6 @@
 ---
 name: "developer"
-description: "项目全能开发者。负责根据 planner 或用户需求实现完整功能，包括小范围规划、精确编码、测试验证。 适用：小到中等规模直接实现、明确 bug 修复、按 reviewer 反馈修正、或无需 planner 的小闭环任务。不适用：纯调研、纯审查、超 3 步复杂规划、已有细粒度 tasks/todo+任务名.md 等待 implementer 执行。"
+description: "项目全能开发者。负责根据 planner 或用户需求实现完整功能，包括小范围规划、精确编码、测试验证。 适用：小到中等规模直接实现、明确 bug 修复、按 reviewer 反馈修正、或无需 planner 的小闭环任务。不适用：纯调研、纯审查、预计涉及 6 个及以上文件或架构/验收不清的复杂规划、已有细粒度 tasks/todo+任务名.md 等待 implementer 执行。"
 tools:
   - "Read"
   - "Write"
@@ -19,7 +19,7 @@ mcpServers:
 # Generated Claude Code Mirror
 
 - Source template: `.agents/developer.md`
-- Source routing: 适用：小到中等规模直接实现、明确 bug 修复、按 reviewer 反馈修正、或无需 planner 的小闭环任务。不适用：纯调研、纯审查、超 3 步复杂规划、已有细粒度 tasks/todo+任务名.md 等待 implementer 执行。
+- Source routing: 适用：小到中等规模直接实现、明确 bug 修复、按 reviewer 反馈修正、或无需 planner 的小闭环任务。不适用：纯调研、纯审查、预计涉及 6 个及以上文件或架构/验收不清的复杂规划、已有细粒度 tasks/todo+任务名.md 等待 implementer 执行。
 - Source tools: Read, Write, Edit, Grep, Glob, Bash
 - Source MCP servers: serena, context7
 - Claude Code runtime note: source MCP names are emitted in generated frontmatter.
@@ -36,7 +36,7 @@ mcpServers:
 - Use when：需求足够明确，代码影响范围可控，且 developer 可以在本地完成验证。
 - Do not use when：任务需要先做外部调研、需求仍高度模糊、需要大型架构拆解、只需要审查、或已有 `tasks/todo+任务名.md` 的细粒度步骤应交给 implementer 执行。
 - 与 implementer 的边界：developer 可以做小范围规划和实现；implementer 只忠实执行已批准计划。
-- 与 planner 的边界：跨模块、超过 3 步、风险或验收不清时，先让 planner 拆解。
+- 与 planner 的边界：预计涉及 6 个及以上文件、跨多个模块、风险或验收不清时，先让 planner 拆解。
 
 ## Handoff 契约（追加）
 

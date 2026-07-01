@@ -58,7 +58,7 @@ class PostToolUseSemanticsTests(unittest.TestCase):
         self.assertEqual(security_state["status"], "security_required")
         self.assertIn("src/leak.py", security_state["subjects"])
 
-    def test_shell_post_tool_use_scans_diff_fallback(self) -> None:
+    def test_shell_post_tool_use_scans_extracted_write_target(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             cwd = Path(raw)
             self.init_repo(cwd)
@@ -78,6 +78,88 @@ class PostToolUseSemanticsTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 2)
         self.assertIn("SecretContentGuard", result.stderr)
+
+    def test_post_tool_use_without_paths_does_not_scan_all_changed_files(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            cwd = Path(raw)
+            self.init_repo(cwd)
+            (cwd / "src").mkdir()
+            (cwd / "src" / "leak.py").write_text(f"TOKEN='{secret_fixture()}'\n", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(RUNTIME), "post-tool-use", "--host", "codex", "--route", "edit"],
+                cwd=cwd,
+                input=json.dumps({"tool_input": {"command": "python generate.py"}}),
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((cwd / "tasks" / "loops" / "security-required.json").exists())
+
+    def test_post_tool_use_unrelated_path_does_not_scan_agent_mirror_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            cwd = Path(raw)
+            self.init_repo(cwd)
+            (cwd / ".agents").mkdir()
+            (cwd / ".codex" / "agents").mkdir(parents=True)
+            (cwd / ".claude" / "agents").mkdir(parents=True)
+            (cwd / "src").mkdir()
+            (cwd / ".agents" / "developer.md").write_text("---\nname: developer\n---\nold\n", encoding="utf-8")
+            (cwd / ".codex" / "agents" / "developer.toml").write_text("# generated\n", encoding="utf-8")
+            (cwd / ".claude" / "agents" / "developer.md").write_text("# generated\n", encoding="utf-8")
+            (cwd / "src" / "feature.py").write_text("print('hello')\n", encoding="utf-8")
+            subprocess.run(["git", "add", ".agents", ".codex", ".claude", "src"], cwd=cwd, check=True)
+            subprocess.run(["git", "commit", "-m", "base"], cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            (cwd / ".agents" / "developer.md").write_text("---\nname: developer\n---\nnew\n", encoding="utf-8")
+            (cwd / "src" / "feature.py").write_text("print('changed')\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(RUNTIME), "post-tool-use", "--host", "codex", "--route", "edit"],
+                cwd=cwd,
+                input=json.dumps({"tool_input": {"file_path": "src/feature.py"}}),
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("MirrorDriftGuard", result.stderr)
+
+    def test_post_tool_use_agent_source_path_still_warns_on_mirror_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            cwd = Path(raw)
+            self.init_repo(cwd)
+            (cwd / ".agents").mkdir()
+            (cwd / ".codex" / "agents").mkdir(parents=True)
+            (cwd / ".claude" / "agents").mkdir(parents=True)
+            (cwd / ".agents" / "developer.md").write_text("---\nname: developer\n---\nold\n", encoding="utf-8")
+            (cwd / ".codex" / "agents" / "developer.toml").write_text("# generated\n", encoding="utf-8")
+            (cwd / ".claude" / "agents" / "developer.md").write_text("# generated\n", encoding="utf-8")
+            subprocess.run(["git", "add", ".agents", ".codex", ".claude"], cwd=cwd, check=True)
+            subprocess.run(["git", "commit", "-m", "agents"], cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            (cwd / ".agents" / "developer.md").write_text("---\nname: developer\n---\nnew\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(RUNTIME), "post-tool-use", "--host", "codex", "--route", "edit"],
+                cwd=cwd,
+                input=json.dumps({"tool_input": {"file_path": ".agents/developer.md"}}),
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("MirrorDriftGuard", result.stderr)
 
     def test_apply_patch_path_extraction_scans_added_file(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

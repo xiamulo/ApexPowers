@@ -4,7 +4,7 @@ This document is the explicit orchestration protocol for worktree-level, issue-l
 
 ## Purpose
 
-ApexPowers already has role templates, generated agent mirrors, `apex-to-issues` issue splitting, and the Stop review request gate. The missing layer is an explicit command that tells the operator how to compose those pieces into one delivery run.
+ApexPowers already has role templates, generated agent mirrors, `apex-to-issues` issue splitting, and an explicit review gate for larger delivery work. The missing layer is an explicit command that tells the operator how to compose those pieces into one delivery run.
 
 The command entrypoint is:
 
@@ -74,7 +74,7 @@ Required fields:
 6. Stop immediately if the current worktree has overlapping uncommitted changes with the planned slice.
 7. Dispatch roles by responsibility, not by availability.
 8. Merge results only after each slice has validation evidence.
-9. Require the Stop review request gate before done:
+9. Require the explicit review gate before done:
    - review file exists under `tasks/reviews/`,
    - `code-reviewer` verdict is Ready or accepted by the user,
    - structured review frontmatter has `status: ready`,
@@ -100,5 +100,5 @@ Stop and report when:
 
 - The orchestration ledger is complete.
 - All slices are either done or explicitly deferred.
-- Review gate and validation gate are satisfied for the PR or final worktree.
+- Explicit review gate and validation evidence are satisfied for the PR or final worktree.
 - README, inventory, distribution checks, and tests are updated when the command or protocol changes.

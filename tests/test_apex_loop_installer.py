@@ -270,7 +270,7 @@ class ApexLoopInstallerTests(unittest.TestCase):
 
         self.assertEqual(first.returncode, 0, first.stderr)
         self.assertEqual(second.returncode, 0, second.stderr)
-        self.assertEqual(config_text.count("apex_loop.py"), 11)
+        self.assertEqual(config_text.count("apex_loop.py"), 10)
         self.assertEqual(config_text.count("# >>> apex-managed-hooks-begin"), 1)
 
     def test_update_alias_reports_operation_and_keeps_manifest_idempotent(self) -> None:
@@ -444,7 +444,7 @@ class ApexLoopInstallerTests(unittest.TestCase):
         self.assertFalse(project_claude_config_exists)
         self.assertFalse(project_codex_runtime_exists)
         self.assertFalse(project_claude_runtime_exists)
-        self.assertEqual(agent_config_text.count("apex_loop.py"), 11)
+        self.assertEqual(agent_config_text.count("apex_loop.py"), 10)
         self.assertEqual(legacy_actions[".codex/hooks.json"], "remove-legacy")
         self.assertEqual(legacy_actions[".claude/settings.json"], "remove-legacy")
 
