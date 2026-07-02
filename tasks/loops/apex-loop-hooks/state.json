@@ -1,5 +1,4 @@
 {
-  "block_count_for_same_reason": 1,
   "changed_file_hashes": {
     ".codex/skills/apex-init-project-agent/scripts/init_project_agent.py": "sha256:169e820dbb6ab88422443244225aca471cdd14476b334e0d4c267a9d3a831814",
     ".codex/skills/apex-init-project-hooks/scripts/apex_loop_routes.py": "sha256:a0f32cb17ada997c30ecd59d0cd1c4ef3d02b282bcf73e0b6023492e6467fd21",
@@ -28,11 +27,7 @@
     "tests/test_apex_loop_installer.py",
     "tests/test_init_project_agent.py"
   ],
-  "continuation_count": 0,
   "created_review_request": false,
-  "last_block_gate": "ReviewGate",
-  "last_block_reason_hash": "c97b0b35902e1359dfa9e5a44442d7d8bd6c51536cc32786e08ea1abec48fc70",
-  "last_diff_hash": "271acf9d74ae4654d6522fb48ff372b9714404e282e8e3db9e48ccdf2f182c66",
   "max_continuations": 0,
   "mode": "supervised",
   "phase": "review_required",
@@ -48,6 +43,6 @@
   "slug": "apex-loop-hooks",
   "task_id": "apex-loop-hooks",
   "todo_path": "tasks/todo+apex-loop-hooks.md",
-  "updated_at": "2026-07-01T21:46:28+0800",
+  "updated_at": "2026-07-02T09:00:31+0800",
   "version": 1
 }

@@ -476,6 +476,7 @@ CLAUDE_TEMPLATE = """# claude.md - 项目灵魂手册
 ## MCP 使用规范（强制执行）
 
 - MCP 是能力路由当任务需要检索代码，检索外部实时信息、第三方文档、远端仓库、代码语义图谱、组件 registry 或跨会话记忆时必须使用 MCP。
+- 大部分 MCP 都挂载在 mcphub MCP 里。
 - 已知路径、单文件、小范围修改，优先用本地 Read/Edit/Grep/命令完成；不要为了“显得严谨”强行调用 MCP。
 - 每个任务默认只选最匹配的 1 个 MCP；复杂任务最多组合 2~3 个，并按“先定位 → 再读取 → 再修改 → 再落地”的顺序使用。禁止把所有 MCP 堆一遍。
 - MCP 结果只是证据来源之一。结论必须能回到代码、配置、日志、文档、命令输出、MCP 返回内容或远端仓库状态；不靠猜测。
@@ -487,16 +488,52 @@ CLAUDE_TEMPLATE = """# claude.md - 项目灵魂手册
   - 使用流程：先 resolve library id，再 query docs；查询时带上库名、版本、具体问题。
   - 不用于：项目内部代码检索、业务逻辑判断、远端仓库管理。
 
-- `serena` / `serend`：代码语义检索与符号级修改。
-  - 触发场景：跨文件定位、调用关系、符号定义、引用查找、局部重构、精准插入/替换函数或类。
-  - 优先工具：`get_symbols_overview`、`find_symbol`、`find_referencing_symbols`、`search_for_pattern`、`replace_symbol_body`、`insert_before_symbol`、`insert_after_symbol`。
-  - 已知具体文件和小改动时，不必强行用 Serena。
+- `semble`：自然语言代码概念检索、相似代码查找、候选代码片段召回。
+  - 触发场景：不知道具体文件/函数名，只知道业务概念、功能意图、代码行为或实现线索时使用。
+  - 典型问题：
+    - “支付失败重试逻辑在哪里？”
+    - “哪里处理 tenant isolation？”
+    - “找和上传压缩、缓存失效、权限校验相关的代码。”
+    - “找和这个函数相似的实现。”
+    - “这个业务概念可能在哪些模块里实现？”
+  - 优先工具：
+    - `search`：用自然语言查询概念、业务逻辑、代码行为，返回候选代码片段。
+    - `find_related`：基于已知文件、函数、代码片段或候选结果查相关实现。
+  - 使用流程：
+    1. 先用 `semble.search` 做自然语言概念检索，拿到 5~10 个候选片段。
+    2. 根据文件路径、函数名、上下文摘要筛掉测试、示例、mock、无关调用方。
+    3. 对最可能的候选文件，再用 `serena` 做符号级确认。
+    4. 修改前必须回到源码读取目标位置，不能只凭 Semble 命中结果直接改。
+  - 与 Serena 的分工：
+    - `semble` 负责“模糊定位”：根据自然语言概念找到候选文件、候选函数、候选代码块。
+    - `serena` 负责“精确确认和落地”：查 symbol、引用、实现、调用关系，并执行精确插入、替换或重构。
+  - 不用于：
+    - 已知具体文件和行号的小改动。
+    - 已知精确 symbol 名称时的引用/定义查找，这种优先用 `serena`。
+    - 最终事实判断。Semble 结果只是召回候选，关键结论必须由源码、Serena 符号结果、测试或命令输出确认。
 
-- `codebase-memory-mcp`：代码库结构图谱、架构概览、影响面分析。
-  - 触发场景：大仓库、不熟悉模块、跨服务调用链、路由到 handler、死代码判断、改动影响面、架构梳理。
-  - 使用流程：先 `list_projects/index_status`；未索引或明显过期时再 `index_repository`；再用 `get_architecture`、`search_graph`、`trace_path`、`detect_changes`、`query_graph`。
-  - 与 Serena 的分工：`codebase-memory-mcp` 负责“地图和影响面”，Serena 负责“精确读写符号”。复杂代码任务可以先图谱定位，再 Serena 落地修改。
-  - 不把索引结果当最终事实；关键修改前仍要读取目标源码确认。
+- `serena` / `serend`：代码语义检索、符号级读取与精准修改。
+  - 触发场景：跨文件定位、调用关系、符号定义、引用查找、局部重构、精准插入/替换函数或类。
+  - 优先工具：
+    - `get_symbols_overview`
+    - `find_symbol`
+    - `find_referencing_symbols`
+    - `search_for_pattern`
+    - `replace_symbol_body`
+    - `insert_before_symbol`
+    - `insert_after_symbol`
+  - 使用流程：
+    - 已知 symbol / class / function / method 名称时，优先直接用 Serena。
+    - 已知候选文件但不了解结构时，先用 `get_symbols_overview`。
+    - 需要确认影响面时，用 `find_referencing_symbols`。
+    - 需要接口、抽象类、多实现关系时，用 `find_implementations` / `find_declaration`，如果当前 Serena 后端支持。
+    - 需要修改函数体、类体、插入方法时，优先使用 symbol-level edit 工具，而不是整文件替换。
+  - 与 Semble 的组合流程：
+    - 用户用自然语言描述业务逻辑，但不知道代码位置：先 `semble.search`，再 `serena.get_symbols_overview` / `serena.find_symbol`。
+    - Semble 找到多个候选片段：用 Serena 逐个确认 symbol、引用和实现关系。
+    - Serena 找到核心 symbol 后：再用 `find_referencing_symbols` 扩展调用方和影响面。
+    - 最终修改前：必须读取目标源码确认上下文。
+  - 已知具体文件和小改动时，不必强行用 Serena。
 
 - `basic-memory`：跨会话、跨项目的长期知识库。
   - 触发场景：主人提到“上次/之前/记住/以后都这样”、跨项目偏好、长期工作流纠正、可复用经验。
@@ -522,7 +559,7 @@ CLAUDE_TEMPLATE = """# claude.md - 项目灵魂手册
 ### 推荐路由顺序
 
 - 查库/框架/API：`context7` → 必要时 `grok-search-rs` 查 release note / issue。
-- 查项目内部代码：小范围直接本地工具；中大型任务先 `codebase-memory-mcp` 看结构，再 `serena` 精确定位和修改。
+- 查项目内部代码：小范围直接本地工具；只知道业务概念时先 `semble` 模糊召回，再用 `serena` 精确定位和修改。
 - 查 UI 组件：`shadcn` 搜索 registry → 本地确认已有组件风格 → 再安装或手写最小实现。
 - 查远端仓库协作信息：`forgejo` 读 issue/PR/文件 → 本地确认代码 → 必要时再写远端。
 - 查历史偏好/项目记忆：`basic-memory` 只在任务依赖历史上下文时读取；有长期价值再写入。
